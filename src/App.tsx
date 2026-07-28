@@ -132,6 +132,9 @@ export function App() {
         <SettingsPanel
           onClearApiKey={async () => setSettings(await window.practice.settings.clearApiKey())}
           onClose={() => setShowSettings(false)}
+          onOpacityPreview={(opacity) => {
+            void window.practice.window.setOpacity(opacity)
+          }}
           onSave={saveSettings}
           settings={settings}
         />

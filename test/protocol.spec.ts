@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultSettings } from '../shared/protocol'
+import { createDefaultSettings, IPC } from '../shared/protocol'
 
 describe('createDefaultSettings', () => {
   it('provides the required default accelerators', () => {
@@ -12,5 +12,9 @@ describe('createDefaultSettings', () => {
       toggle: 'Alt+E'
     })
     expect(createDefaultSettings().opacity).toBe(0.88)
+  })
+
+  it('defines a temporary window opacity channel', () => {
+    expect(IPC.WINDOW_SET_OPACITY).toBe('window:set-opacity')
   })
 })

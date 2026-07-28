@@ -6,6 +6,7 @@ import { validateSettingsPatch } from '../../shared/validation'
 export interface SettingsPanelProps {
   onClearApiKey?: () => Promise<void>
   onClose(): void
+  onOpacityPreview?(opacity: number): void
   onSave(patch: SettingsPatch): Promise<void> | void
   settings: PublicSettings
 }
@@ -13,6 +14,7 @@ export interface SettingsPanelProps {
 export function SettingsPanel({
   onClearApiKey,
   onClose,
+  onOpacityPreview,
   onSave,
   settings
 }: SettingsPanelProps) {
@@ -24,6 +26,11 @@ export function SettingsPanel({
   const [hotkeys, setHotkeys] = useState({ ...settings.hotkeys })
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
+
+  const cancel = () => {
+    onOpacityPreview?.(settings.opacity)
+    onClose()
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -52,7 +59,7 @@ export function SettingsPanel({
             <span className="eyebrow">SETTINGS</span>
             <h2>连接与快捷键</h2>
           </div>
-          <button aria-label="关闭设置" className="icon-button" onClick={onClose} type="button">
+          <button aria-label="关闭设置" className="icon-button" onClick={cancel} type="button">
             ×
           </button>
         </div>
@@ -81,7 +88,11 @@ export function SettingsPanel({
             aria-label="窗口透明度"
             max="95"
             min="35"
-            onChange={(event) => setOpacity(Number(event.target.value) / 100)}
+            onChange={(event) => {
+              const nextOpacity = Number(event.target.value) / 100
+              setOpacity(nextOpacity)
+              onOpacityPreview?.(nextOpacity)
+            }}
             step="1"
             type="range"
             value={Math.round(opacity * 100)}
@@ -126,7 +137,7 @@ export function SettingsPanel({
             </button>
           )}
           <span className="action-spacer" />
-          <button className="secondary-button" onClick={onClose} type="button">
+          <button className="secondary-button" onClick={cancel} type="button">
             取消
           </button>
           <button className="primary-button" disabled={saving} type="submit">

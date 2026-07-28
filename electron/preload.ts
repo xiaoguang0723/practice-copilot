@@ -38,6 +38,7 @@ const api: PracticeApi = {
   },
   window: {
     hide: () => ipcRenderer.invoke(IPC.WINDOW_HIDE),
+    setOpacity: (opacity) => ipcRenderer.invoke(IPC.WINDOW_SET_OPACITY, opacity),
     toggle: () => ipcRenderer.invoke(IPC.WINDOW_TOGGLE)
   }
 }

@@ -63,6 +63,7 @@ export const IPC = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
   WINDOW_HIDE: 'window:hide',
+  WINDOW_SET_OPACITY: 'window:set-opacity',
   WINDOW_TOGGLE: 'window:toggle'
 } as const
 
@@ -89,6 +90,7 @@ export interface PracticeApi {
   }
   window: {
     hide(): Promise<void>
+    setOpacity(opacity: number): Promise<void>
     toggle(): Promise<void>
   }
 }

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from '../src/App'
 import { MarkdownAnswer } from '../src/components/MarkdownAnswer'
@@ -9,6 +9,8 @@ import {
   type HotkeyAction,
   type PracticeApi
 } from '../shared/protocol'
+
+afterEach(cleanup)
 
 describe('MarkdownAnswer', () => {
   it('renders headings, tables, and code blocks', () => {
@@ -37,6 +39,28 @@ describe('SettingsPanel', () => {
     expect(await screen.findByText('API 地址必须使用 HTTP 或 HTTPS')).toBeInTheDocument()
     expect(onSave).not.toHaveBeenCalled()
   })
+
+  it('previews opacity changes and restores the saved value on cancel', () => {
+    const onClose = vi.fn()
+    const onOpacityPreview = vi.fn()
+    render(
+      <SettingsPanel
+        onClose={onClose}
+        onOpacityPreview={onOpacityPreview}
+        onSave={vi.fn()}
+        settings={createDefaultSettings()}
+      />
+    )
+
+    fireEvent.change(screen.getByRole('slider', { name: '窗口透明度' }), {
+      target: { value: '64' }
+    })
+    expect(onOpacityPreview).toHaveBeenCalledWith(0.64)
+
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+    expect(onOpacityPreview).toHaveBeenLastCalledWith(0.88)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })
 
 describe('App hotkey scrolling', () => {
@@ -62,7 +86,7 @@ describe('App hotkey scrolling', () => {
         get: vi.fn(async () => settings),
         save: vi.fn(async () => settings)
       },
-      window: { hide: vi.fn(), toggle: vi.fn() }
+      window: { hide: vi.fn(), setOpacity: vi.fn(), toggle: vi.fn() }
     }
     Object.defineProperty(window, 'practice', { configurable: true, value: api })
 

@@ -186,6 +186,12 @@ async function bootstrap(): Promise<void> {
     if (typeof requestId === 'string') coordinator.cancelAnswer(requestId)
   })
   ipcMain.handle(IPC.WINDOW_HIDE, () => window.hide())
+  ipcMain.handle(IPC.WINDOW_SET_OPACITY, (_event, opacity: unknown) => {
+    if (typeof opacity !== 'number') throw new Error('透明度无效')
+    const validation = validateSettingsPatch({ opacity })
+    if (!validation.ok) throw new Error(validation.message)
+    window.setOpacity(opacity)
+  })
   ipcMain.handle(IPC.WINDOW_TOGGLE, toggleWindow)
   ipcMain.handle(IPC.APP_QUIT, () => coordinator.shutdown())
 
