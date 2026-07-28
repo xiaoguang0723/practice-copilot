@@ -49,7 +49,6 @@
     },
     "files": [
       "out/**/*",
-      "build/tray-icon.svg",
       "package.json"
     ],
     "win": {

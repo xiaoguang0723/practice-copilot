@@ -7,8 +7,7 @@ import {
   ipcMain,
   safeStorage,
   screen,
-  type Rectangle,
-  type Tray
+  type Rectangle
 } from 'electron'
 
 import { IPC, type HotkeyAction, type SettingsPatch } from '../shared/protocol'
@@ -18,7 +17,6 @@ import { AppCoordinator } from './coordinator'
 import { registerHotkeys } from './hotkeys'
 import { streamVisionAnswer } from './llm/client'
 import { SettingsStore, type SecretCipher } from './settings'
-import { createAppTray } from './tray'
 import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
 
 const DEFAULT_WIDTH = 460
@@ -43,7 +41,6 @@ async function bootstrap(): Promise<void> {
     encrypt: (plain) => safeStorage.encryptString(plain).toString('base64')
   }
   const settings = new SettingsStore(settingsFile, cipher)
-  let tray: Tray | undefined
   let quitting = false
   let pointerThrough = false
 
@@ -106,7 +103,6 @@ async function bootstrap(): Promise<void> {
 
   const coordinator = new AppCoordinator({
     capture: capturePrimaryDisplay,
-    destroyTray: () => tray?.destroy(),
     emitAnswer: (event) => window.webContents.send(IPC.ANSWER_EVENT, event),
     quit: () => {
       quitting = true
@@ -147,16 +143,6 @@ async function bootstrap(): Promise<void> {
     handleAction
   )
   if (!initialRegistration.ok) console.error(initialRegistration.message)
-
-  tray = createAppTray(join(app.getAppPath(), 'build', 'tray-icon.svg'), window, {
-    openSettings: () => {
-      window.show()
-      window.focus()
-      window.webContents.send(IPC.HOTKEY_ACTION, 'settings')
-    },
-    quit: () => coordinator.shutdown(),
-    toggle: toggleWindow
-  })
 
   ipcMain.handle(IPC.SETTINGS_GET, () => settings.getPublic())
   ipcMain.handle(IPC.SETTINGS_CLEAR_API_KEY, () => settings.clearApiKey())
