@@ -5,6 +5,8 @@ import { MarkdownAnswer } from './components/MarkdownAnswer'
 import { SettingsPanel } from './components/SettingsPanel'
 import { appReducer, initialAppState } from './state'
 
+const ANSWER_SCROLL_STEP = 180
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败，请重试'
 }
@@ -14,6 +16,7 @@ export function App() {
   const [settings, setSettings] = useState<PublicSettings>()
   const [showSettings, setShowSettings] = useState(false)
   const [extraPrompt, setExtraPrompt] = useState('')
+  const answerRegionRef = useRef<HTMLElement>(null)
   const promptRef = useRef(extraPrompt)
   promptRef.current = extraPrompt
 
@@ -53,6 +56,12 @@ export function App() {
       if (action === 'answer') void answer()
       if (action === 'clear') dispatch({ type: 'capture-clear' })
       if (action === 'settings') setShowSettings(true)
+      if (action === 'scroll-down' || action === 'scroll-up') {
+        answerRegionRef.current?.scrollBy({
+          behavior: 'smooth',
+          top: action === 'scroll-down' ? ANSWER_SCROLL_STEP : -ANSWER_SCROLL_STEP
+        })
+      }
     })
     return () => {
       removeAnswerListener()
@@ -98,7 +107,7 @@ export function App() {
         </div>
       )}
 
-      <section className="answer-region">
+      <section aria-label="模型回答" className="answer-region" ref={answerRegionRef}>
         <MarkdownAnswer content={state.answer} streaming={state.phase === 'streaming'} />
       </section>
 

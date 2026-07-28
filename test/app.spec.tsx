@@ -1,9 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { App } from '../src/App'
 import { MarkdownAnswer } from '../src/components/MarkdownAnswer'
 import { SettingsPanel } from '../src/components/SettingsPanel'
-import { createDefaultSettings } from '../shared/protocol'
+import {
+  createDefaultSettings,
+  type HotkeyAction,
+  type PracticeApi
+} from '../shared/protocol'
 
 describe('MarkdownAnswer', () => {
   it('renders headings, tables, and code blocks', () => {
@@ -31,5 +36,46 @@ describe('SettingsPanel', () => {
 
     expect(await screen.findByText('API 地址必须使用 HTTP 或 HTTPS')).toBeInTheDocument()
     expect(onSave).not.toHaveBeenCalled()
+  })
+})
+
+describe('App hotkey scrolling', () => {
+  it('scrolls the answer region when global scroll actions arrive', async () => {
+    let onHotkey: ((action: HotkeyAction) => void) | undefined
+    const settings = createDefaultSettings()
+    const api: PracticeApi = {
+      answer: {
+        cancel: vi.fn(),
+        onEvent: vi.fn(() => () => undefined),
+        start: vi.fn()
+      },
+      app: { quit: vi.fn() },
+      capture: { clear: vi.fn(), primary: vi.fn() },
+      hotkeys: {
+        onAction: vi.fn((callback) => {
+          onHotkey = callback
+          return () => undefined
+        })
+      },
+      settings: {
+        clearApiKey: vi.fn(async () => settings),
+        get: vi.fn(async () => settings),
+        save: vi.fn(async () => settings)
+      },
+      window: { hide: vi.fn(), toggle: vi.fn() }
+    }
+    Object.defineProperty(window, 'practice', { configurable: true, value: api })
+
+    render(<App />)
+    const answerRegion = screen.getByRole('region', { name: '模型回答' })
+    const scrollBy = vi.fn()
+    Object.defineProperty(answerRegion, 'scrollBy', { configurable: true, value: scrollBy })
+    await waitFor(() => expect(onHotkey).toBeTypeOf('function'))
+
+    onHotkey?.('scroll-down')
+    onHotkey?.('scroll-up')
+
+    expect(scrollBy).toHaveBeenNthCalledWith(1, { behavior: 'smooth', top: 180 })
+    expect(scrollBy).toHaveBeenNthCalledWith(2, { behavior: 'smooth', top: -180 })
   })
 })
