@@ -132,6 +132,7 @@ button {
 }
 
 .answer-region {
+  min-width: 0;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
@@ -175,6 +176,10 @@ button {
 }
 
 .markdown-answer {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 18px 18px 28px;
   color: #dfe7f2;
   font-size: 14px;
@@ -243,7 +248,9 @@ button {
 }
 
 .markdown-answer pre {
-  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
   padding: 12px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 10px;
@@ -251,7 +258,12 @@ button {
 }
 
 .markdown-answer pre code {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   background: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .markdown-answer table {
