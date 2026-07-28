@@ -1,0 +1,61 @@
+{
+  "name": "practice-copilot",
+  "version": "0.1.0",
+  "description": "Protected translucent Windows practice assistant with BYOK multimodal streaming",
+  "author": "Practice Copilot Contributors",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/main.js",
+  "scripts": {
+    "build": "electron-vite build",
+    "dev": "electron-vite dev",
+    "package:dir": "npm run build && electron-builder --dir --win --x64",
+    "package:win": "npm run build && electron-builder --win --x64",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.0",
+    "@electron-toolkit/utils": "^4.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.0.0",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "electron": "^41.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^3.1.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "com.practicecopilot.desktop",
+    "productName": "Practice Copilot",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "build/tray-icon.svg",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  }
+}
