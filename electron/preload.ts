@@ -21,6 +21,7 @@ const api: PracticeApi = {
     quit: () => ipcRenderer.invoke(IPC.APP_QUIT)
   },
   capture: {
+    clear: () => ipcRenderer.invoke(IPC.CAPTURE_CLEAR),
     primary: () => ipcRenderer.invoke(IPC.CAPTURE_PRIMARY)
   },
   hotkeys: {
@@ -42,4 +43,3 @@ const api: PracticeApi = {
 }
 
 contextBridge.exposeInMainWorld('practice', api)
-

@@ -1,6 +1,6 @@
 export interface VisionPromptInput {
   extraPrompt: string
-  imageDataUrl: string
+  imageDataUrls: string[]
   persistentPrompt: string
 }
 
@@ -30,10 +30,9 @@ export function buildVisionMessages(input: VisionPromptInput): VisionMessage[] {
           : '请分析截图中的题目并给出答案。',
         type: 'text'
       },
-      { image_url: { url: input.imageDataUrl }, type: 'image_url' }
+      ...input.imageDataUrls.map((url) => ({ image_url: { url }, type: 'image_url' as const }))
     ],
     role: 'user'
   })
   return messages
 }
-

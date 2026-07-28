@@ -41,6 +41,9 @@ export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
   if (patch.model !== undefined && patch.model.length > 200) {
     return { message: '模型名不能超过 200 个字符', ok: false }
   }
+  if (patch.opacity !== undefined && (!Number.isFinite(patch.opacity) || patch.opacity < 0.35 || patch.opacity > 0.95)) {
+    return { message: '透明度必须在 35% 到 95% 之间', ok: false }
+  }
   if (patch.persistentPrompt !== undefined && patch.persistentPrompt.length > 8000) {
     return { message: '提示词不能超过 8000 个字符', ok: false }
   }
@@ -56,4 +59,3 @@ export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
   }
   return { ok: true }
 }
-

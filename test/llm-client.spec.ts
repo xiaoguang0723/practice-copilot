@@ -46,7 +46,7 @@ describe('streamVisionAnswer', () => {
         apiKey: 'key-secret',
         baseUrl: 'https://api.example.com/v1',
         extraPrompt: '',
-        imageDataUrl: 'data:image/jpeg;base64,abc',
+        imageDataUrls: ['data:image/jpeg;base64,abc'],
         model: 'vision-model',
         persistentPrompt: ''
       },
@@ -67,7 +67,7 @@ describe('streamVisionAnswer', () => {
           apiKey: 'api-key-secret',
           baseUrl: 'https://api.example.com/v1',
           extraPrompt: '',
-          imageDataUrl: 'data:image/jpeg;base64,abc',
+          imageDataUrls: ['data:image/jpeg;base64,abc'],
           model: 'vision-model',
           persistentPrompt: ''
         },

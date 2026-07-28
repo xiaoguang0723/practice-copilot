@@ -30,3 +30,11 @@ export function clampBoundsToWorkArea(bounds: Rectangle, workArea: Rectangle): R
   }
 }
 
+export function moveBoundsWithinWorkArea(
+  bounds: Rectangle,
+  workArea: Rectangle,
+  deltaX: number,
+  deltaY: number
+): Rectangle {
+  return clampBoundsToWorkArea({ ...bounds, x: bounds.x + deltaX, y: bounds.y + deltaY }, workArea)
+}

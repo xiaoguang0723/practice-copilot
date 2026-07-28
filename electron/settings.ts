@@ -20,6 +20,7 @@ interface SettingsFile {
   baseUrl: string
   hotkeys: HotkeySettings
   model: string
+  opacity: number
   persistentPrompt: string
   version: 1
 }
@@ -30,6 +31,7 @@ function defaultFile(): SettingsFile {
     baseUrl: defaults.baseUrl,
     hotkeys: { ...defaults.hotkeys },
     model: defaults.model,
+    opacity: defaults.opacity,
     persistentPrompt: defaults.persistentPrompt,
     version: 1
   }
@@ -51,6 +53,7 @@ export class SettingsStore {
       baseUrl: this.data.baseUrl,
       hotkeys: { ...this.data.hotkeys },
       model: this.data.model,
+      opacity: this.data.opacity,
       persistentPrompt: this.data.persistentPrompt
     }
   }
@@ -70,6 +73,7 @@ export class SettingsStore {
 
     if (patch.baseUrl !== undefined) this.data.baseUrl = normalizeBaseUrl(patch.baseUrl)
     if (patch.model !== undefined) this.data.model = patch.model.trim()
+    if (patch.opacity !== undefined) this.data.opacity = patch.opacity
     if (patch.persistentPrompt !== undefined) this.data.persistentPrompt = patch.persistentPrompt
     if (patch.hotkeys) this.data.hotkeys = { ...this.data.hotkeys, ...patch.hotkeys }
     if (patch.apiKey !== undefined && patch.apiKey !== '') {
@@ -97,6 +101,10 @@ export class SettingsStore {
         baseUrl: typeof raw.baseUrl === 'string' ? raw.baseUrl : defaults.baseUrl,
         hotkeys: { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },
         model: typeof raw.model === 'string' ? raw.model : defaults.model,
+        opacity:
+          typeof raw.opacity === 'number' && raw.opacity >= 0.35 && raw.opacity <= 0.95
+            ? raw.opacity
+            : defaults.opacity,
         persistentPrompt:
           typeof raw.persistentPrompt === 'string' ? raw.persistentPrompt : defaults.persistentPrompt,
         version: 1

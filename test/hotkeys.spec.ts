@@ -6,6 +6,7 @@ import type { HotkeySettings } from '../shared/protocol'
 const oldHotkeys: HotkeySettings = {
   answer: 'Alt+W',
   capture: 'Alt+Q',
+  clear: 'Alt+R',
   quit: 'Alt+X',
   toggle: 'Alt+E'
 }
@@ -22,7 +23,18 @@ describe('registerHotkeys', () => {
     }
 
     expect(registerHotkeys(registrar, oldHotkeys, oldHotkeys, () => undefined)).toEqual({ ok: true })
-    expect(registered).toEqual(['Alt+Q', 'Alt+W', 'Alt+E', 'Alt+X'])
+    expect(registered).toEqual([
+      'Alt+Q',
+      'Alt+W',
+      'Alt+R',
+      'Alt+E',
+      'Alt+X',
+      'Alt+D',
+      'Control+Up',
+      'Control+Down',
+      'Control+Left',
+      'Control+Right'
+    ])
   })
 
   it('rolls back all shortcuts when one registration fails', () => {
@@ -41,7 +53,17 @@ describe('registerHotkeys', () => {
       message: '快捷键 Ctrl+W 注册失败',
       ok: false
     })
-    expect(rounds.at(-1)).toEqual(['Alt+Q', 'Alt+W', 'Alt+E', 'Alt+X'])
+    expect(rounds.at(-1)).toEqual([
+      'Alt+Q',
+      'Alt+W',
+      'Alt+R',
+      'Alt+E',
+      'Alt+X',
+      'Alt+D',
+      'Control+Up',
+      'Control+Down',
+      'Control+Left',
+      'Control+Right'
+    ])
   })
 })
-

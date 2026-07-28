@@ -1,6 +1,7 @@
 export interface HotkeySettings {
   answer: string
   capture: string
+  clear: string
   quit: string
   toggle: string
 }
@@ -10,6 +11,7 @@ export interface PublicSettings {
   baseUrl: string
   hotkeys: HotkeySettings
   model: string
+  opacity: number
   persistentPrompt: string
 }
 
@@ -18,6 +20,7 @@ export interface SettingsPatch {
   baseUrl?: string
   hotkeys?: Partial<HotkeySettings>
   model?: string
+  opacity?: number
   persistentPrompt?: string
 }
 
@@ -28,11 +31,23 @@ export type AnswerEvent =
 
 export interface CaptureResult {
   capturedAt: number
+  count: number
   height: number
   width: number
 }
 
-export type HotkeyAction = 'answer' | 'capture' | 'quit' | 'settings' | 'toggle'
+export type HotkeyAction =
+  | 'answer'
+  | 'capture'
+  | 'clear'
+  | 'move-down'
+  | 'move-left'
+  | 'move-right'
+  | 'move-up'
+  | 'pointer-through'
+  | 'quit'
+  | 'settings'
+  | 'toggle'
 
 export const IPC = {
   ANSWER_CANCEL: 'answer:cancel',
@@ -40,6 +55,7 @@ export const IPC = {
   ANSWER_START: 'answer:start',
   APP_QUIT: 'app:quit',
   CAPTURE_PRIMARY: 'capture:primary',
+  CAPTURE_CLEAR: 'capture:clear',
   HOTKEY_ACTION: 'hotkeys:action',
   SETTINGS_CLEAR_API_KEY: 'settings:clear-api-key',
   SETTINGS_GET: 'settings:get',
@@ -58,6 +74,7 @@ export interface PracticeApi {
     quit(): Promise<void>
   }
   capture: {
+    clear(): Promise<void>
     primary(): Promise<CaptureResult>
   }
   hotkeys: {
@@ -81,10 +98,12 @@ export function createDefaultSettings(): PublicSettings {
     hotkeys: {
       answer: 'Alt+W',
       capture: 'Alt+Q',
+      clear: 'Alt+R',
       quit: 'Alt+X',
       toggle: 'Alt+E'
     },
     model: 'gpt-4.1-mini',
+    opacity: 0.88,
     persistentPrompt: ''
   }
 }

@@ -1,9 +1,10 @@
 import { desktopCapturer, screen } from 'electron'
 
-import type { CaptureResult } from '../shared/protocol'
-
-export interface CapturedScreen extends CaptureResult {
+export interface CapturedScreen {
+  capturedAt: number
   dataUrl: string
+  height: number
+  width: number
 }
 
 export async function capturePrimaryDisplay(): Promise<CapturedScreen> {
@@ -25,4 +26,3 @@ export async function capturePrimaryDisplay(): Promise<CapturedScreen> {
     width: source.thumbnail.getSize().width
   }
 }
-

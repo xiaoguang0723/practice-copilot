@@ -19,6 +19,7 @@ export function SettingsPanel({
   const [baseUrl, setBaseUrl] = useState(settings.baseUrl)
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(settings.model)
+  const [opacity, setOpacity] = useState(settings.opacity)
   const [persistentPrompt, setPersistentPrompt] = useState(settings.persistentPrompt)
   const [hotkeys, setHotkeys] = useState({ ...settings.hotkeys })
   const [error, setError] = useState<string>()
@@ -26,7 +27,7 @@ export function SettingsPanel({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const patch: SettingsPatch = { apiKey, baseUrl, hotkeys, model, persistentPrompt }
+    const patch: SettingsPatch = { apiKey, baseUrl, hotkeys, model, opacity, persistentPrompt }
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) {
       setError(validation.message)
@@ -75,6 +76,18 @@ export function SettingsPanel({
           <input value={model} onChange={(event) => setModel(event.target.value)} />
         </label>
         <label>
+          <span>窗口透明度 {Math.round(opacity * 100)}%</span>
+          <input
+            aria-label="窗口透明度"
+            max="95"
+            min="35"
+            onChange={(event) => setOpacity(Number(event.target.value) / 100)}
+            step="1"
+            type="range"
+            value={Math.round(opacity * 100)}
+          />
+        </label>
+        <label>
           <span>持久化提示词</span>
           <textarea
             maxLength={8000}
@@ -90,6 +103,7 @@ export function SettingsPanel({
             [
               ['capture', '截图'],
               ['answer', '发送'],
+              ['clear', '清空截图'],
               ['toggle', '显示 / 隐藏'],
               ['quit', '退出']
             ] as const
@@ -123,4 +137,3 @@ export function SettingsPanel({
     </div>
   )
 }
-

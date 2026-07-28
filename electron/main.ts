@@ -19,11 +19,12 @@ import { registerHotkeys } from './hotkeys'
 import { streamVisionAnswer } from './llm/client'
 import { SettingsStore, type SecretCipher } from './settings'
 import { createAppTray } from './tray'
-import { clampBoundsToWorkArea, positionInWorkArea } from './window-state'
+import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
 
 const DEFAULT_WIDTH = 460
 const DEFAULT_HEIGHT = 620
 const WINDOW_MARGIN = 24
+const WINDOW_MOVE_STEP = 24
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -44,6 +45,7 @@ async function bootstrap(): Promise<void> {
   const settings = new SettingsStore(settingsFile, cipher)
   let tray: Tray | undefined
   let quitting = false
+  let pointerThrough = false
 
   const primaryWorkArea = screen.getPrimaryDisplay().workArea
   const initialBounds = loadBounds(boundsFile, primaryWorkArea)
@@ -69,6 +71,7 @@ async function bootstrap(): Promise<void> {
   })
   window.setAlwaysOnTop(true, 'screen-saver')
   window.setContentProtection(true)
+  window.setOpacity(settings.getPublic().opacity)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   window.once('ready-to-show', () => window.show())
@@ -116,6 +119,24 @@ async function bootstrap(): Promise<void> {
   const handleAction = (action: HotkeyAction) => {
     if (action === 'quit') coordinator.shutdown()
     else if (action === 'toggle') toggleWindow()
+    else if (action === 'clear') {
+      coordinator.clearCaptures()
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+    } else if (action === 'pointer-through') {
+      const enabled = !pointerThrough
+      pointerThrough = enabled
+      window.setIgnoreMouseEvents(enabled, { forward: true })
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+    } else if (
+      action === 'move-up' ||
+      action === 'move-down' ||
+      action === 'move-left' ||
+      action === 'move-right'
+    ) {
+      const delta = movementDelta(action)
+      const workArea = screen.getDisplayMatching(window.getBounds()).workArea
+      window.setBounds(moveBoundsWithinWorkArea(window.getBounds(), workArea, delta.x, delta.y))
+    }
     else window.webContents.send(IPC.HOTKEY_ACTION, action)
   }
 
@@ -149,13 +170,16 @@ async function bootstrap(): Promise<void> {
       if (!result.ok) throw new Error(result.message)
     }
     try {
-      return settings.applyPatch(patch)
+      const saved = settings.applyPatch(patch)
+      if (patch.opacity !== undefined) window.setOpacity(saved.opacity)
+      return saved
     } catch (error) {
       if (patch.hotkeys) registerHotkeys(globalShortcut, previous, previous, handleAction)
       throw error
     }
   })
   ipcMain.handle(IPC.CAPTURE_PRIMARY, () => coordinator.capturePrimary())
+  ipcMain.handle(IPC.CAPTURE_CLEAR, () => coordinator.clearCaptures())
   ipcMain.handle(IPC.ANSWER_START, (_event, input: { extraPrompt?: unknown }) => {
     if (typeof input?.extraPrompt !== 'string' || input.extraPrompt.length > 8000) {
       throw new Error('临时提示词无效')
@@ -193,6 +217,13 @@ async function bootstrap(): Promise<void> {
     const workArea = screen.getDisplayMatching(window.getBounds()).workArea
     window.setBounds(clampBoundsToWorkArea(window.getBounds(), workArea))
   })
+}
+
+function movementDelta(action: Extract<HotkeyAction, `move-${string}`>): { x: number; y: number } {
+  if (action === 'move-up') return { x: 0, y: -WINDOW_MOVE_STEP }
+  if (action === 'move-down') return { x: 0, y: WINDOW_MOVE_STEP }
+  if (action === 'move-left') return { x: -WINDOW_MOVE_STEP, y: 0 }
+  return { x: WINDOW_MOVE_STEP, y: 0 }
 }
 
 function loadBounds(filePath: string, workArea: Rectangle): Rectangle {

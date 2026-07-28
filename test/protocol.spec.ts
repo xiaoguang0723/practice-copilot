@@ -7,8 +7,10 @@ describe('createDefaultSettings', () => {
     expect(createDefaultSettings().hotkeys).toEqual({
       answer: 'Alt+W',
       capture: 'Alt+Q',
+      clear: 'Alt+R',
       quit: 'Alt+X',
       toggle: 'Alt+E'
     })
+    expect(createDefaultSettings().opacity).toBe(0.88)
   })
 })

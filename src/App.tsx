@@ -51,6 +51,7 @@ export function App() {
     const removeHotkeyListener = window.practice.hotkeys.onAction((action) => {
       if (action === 'capture') void capture()
       if (action === 'answer') void answer()
+      if (action === 'clear') dispatch({ type: 'capture-clear' })
       if (action === 'settings') setShowSettings(true)
     })
     return () => {
@@ -65,7 +66,7 @@ export function App() {
     setShowSettings(false)
   }
 
-  const capturedTime = state.capture
+  const captureStatus = state.capture
     ? new Date(state.capture.capturedAt).toLocaleTimeString('zh-CN', {
         hour: '2-digit',
         minute: '2-digit',
@@ -79,7 +80,7 @@ export function App() {
         <div className="brand-mark">P</div>
         <div className="brand-copy">
           <strong>Practice Copilot</strong>
-          <span>{capturedTime ? `已捕获 · ${capturedTime}` : 'Alt+Q 截图 · Alt+W 发送'}</span>
+          <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : 'Alt+Q 截图 · Alt+W 发送'}</span>
         </div>
         <div className="title-actions">
           <button aria-label="打开设置" className="icon-button" onClick={() => setShowSettings(true)}>
@@ -113,6 +114,7 @@ export function App() {
         <div className="shortcut-strip">
           <span><kbd>Alt</kbd> + <kbd>Q</kbd> 截图</span>
           <span><kbd>Alt</kbd> + <kbd>W</kbd> 发送</span>
+          <span><kbd>Alt</kbd> + <kbd>R</kbd> 清空</span>
           <button onClick={() => void answer()} type="button">发送</button>
         </div>
       </footer>

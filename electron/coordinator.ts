@@ -4,7 +4,9 @@ import type { AnswerEvent, CaptureResult } from '../shared/protocol'
 import type { CapturedScreen } from './capture'
 import type { StreamVisionOptions } from './llm/client'
 
-type AnswerInput = Omit<StreamVisionOptions, 'imageDataUrl'>
+const MAX_CAPTURE_COUNT = 5
+
+type AnswerInput = Omit<StreamVisionOptions, 'imageDataUrls'>
 
 export interface CoordinatorDependencies {
   capture(): Promise<CapturedScreen>
@@ -21,20 +23,24 @@ export interface CoordinatorDependencies {
 
 export class AppCoordinator {
   private active?: { controller: AbortController; requestId: string }
-  private latestCapture?: CapturedScreen
+  private captures: CapturedScreen[] = []
   private shuttingDown = false
 
   constructor(private readonly dependencies: CoordinatorDependencies) {}
 
   async capturePrimary(): Promise<CaptureResult> {
     const captured = await this.dependencies.capture()
-    this.latestCapture = captured
+    this.captures = [...this.captures, captured].slice(-MAX_CAPTURE_COUNT)
     const { capturedAt, height, width } = captured
-    return { capturedAt, height, width }
+    return { capturedAt, count: this.captures.length, height, width }
+  }
+
+  clearCaptures(): void {
+    this.captures = []
   }
 
   startAnswer(input: AnswerInput): { requestId: string } {
-    if (!this.latestCapture) throw new Error('请先按 Alt+Q 捕获屏幕')
+    if (this.captures.length === 0) throw new Error('请先按 Alt+Q 捕获屏幕')
     this.active?.controller.abort()
 
     const requestId = randomUUID()
@@ -42,7 +48,7 @@ export class AppCoordinator {
     this.active = { controller, requestId }
     void this.runAnswer(requestId, controller, {
       ...input,
-      imageDataUrl: this.latestCapture.dataUrl
+      imageDataUrls: this.captures.map((capture) => capture.dataUrl)
     })
     return { requestId }
   }

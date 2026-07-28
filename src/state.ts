@@ -11,6 +11,7 @@ export interface AppState {
 }
 
 export type AppAction =
+  | { type: 'capture-clear' }
   | { result: CaptureResult; type: 'capture-success' }
   | { message: string; type: 'local-error' }
   | { requestId: string; type: 'stream-start' }
@@ -24,6 +25,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'capture-success':
       return { ...state, capture: action.result, error: undefined, phase: 'captured' }
+    case 'capture-clear':
+      return { ...state, capture: undefined, error: undefined, phase: 'idle' }
     case 'local-error':
       return { ...state, error: action.message, phase: 'error' }
     case 'stream-start':
@@ -53,4 +56,3 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         : state
   }
 }
-

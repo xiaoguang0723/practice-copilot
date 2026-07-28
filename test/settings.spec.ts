@@ -50,7 +50,11 @@ describe('SettingsStore', () => {
 
   it('merges partial hotkeys and reloads persisted settings', () => {
     const { filePath, store } = createStore()
-    store.applyPatch({ baseUrl: 'https://example.com/v1/', hotkeys: { capture: 'Ctrl+Q' } })
+    store.applyPatch({
+      baseUrl: 'https://example.com/v1/',
+      hotkeys: { capture: 'Ctrl+Q' },
+      opacity: 0.65
+    })
 
     const reloaded = new SettingsStore(filePath, {
       available: () => true,
@@ -62,9 +66,11 @@ describe('SettingsStore', () => {
     expect(reloaded.getPublic().hotkeys).toEqual({
       answer: 'Alt+W',
       capture: 'Ctrl+Q',
+      clear: 'Alt+R',
       quit: 'Alt+X',
       toggle: 'Alt+E'
     })
+    expect(reloaded.getPublic().opacity).toBe(0.65)
   })
 
   it('refuses to store a key when secure storage is unavailable', () => {
