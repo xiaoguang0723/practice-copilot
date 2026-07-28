@@ -20,6 +20,8 @@ const orderedActions: Array<Extract<ShortcutAction, keyof HotkeySettings>> = [
 ]
 const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string]> = [
   ['pointer-through', 'Alt+D'],
+  ['scroll-up', 'Alt+Up'],
+  ['scroll-down', 'Alt+Down'],
   ['move-up', 'Control+Up'],
   ['move-down', 'Control+Down'],
   ['move-left', 'Control+Left'],

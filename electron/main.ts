@@ -17,6 +17,7 @@ import { AppCoordinator } from './coordinator'
 import { registerHotkeys } from './hotkeys'
 import { streamVisionAnswer } from './llm/client'
 import { SettingsStore, type SecretCipher } from './settings'
+import { setPointerThrough } from './window-interaction'
 import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
 
 const DEFAULT_WIDTH = 460
@@ -121,7 +122,7 @@ async function bootstrap(): Promise<void> {
     } else if (action === 'pointer-through') {
       const enabled = !pointerThrough
       pointerThrough = enabled
-      window.setIgnoreMouseEvents(enabled, { forward: true })
+      setPointerThrough(window, enabled)
       window.webContents.send(IPC.HOTKEY_ACTION, action)
     } else if (
       action === 'move-up' ||

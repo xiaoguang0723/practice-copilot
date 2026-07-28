@@ -46,6 +46,8 @@ export type HotkeyAction =
   | 'move-up'
   | 'pointer-through'
   | 'quit'
+  | 'scroll-down'
+  | 'scroll-up'
   | 'settings'
   | 'toggle'
 
