@@ -10,7 +10,6 @@ type AnswerInput = Omit<StreamVisionOptions, 'imageDataUrls'>
 
 export interface CoordinatorDependencies {
   capture(): Promise<CapturedScreen>
-  destroyTray(): void
   emitAnswer(event: AnswerEvent): void
   quit(): void
   stream(
@@ -62,7 +61,6 @@ export class AppCoordinator {
     this.shuttingDown = true
     this.active?.controller.abort()
     this.dependencies.unregisterHotkeys()
-    this.dependencies.destroyTray()
     this.dependencies.quit()
   }
 

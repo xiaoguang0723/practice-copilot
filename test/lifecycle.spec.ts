@@ -16,7 +16,6 @@ describe('AppCoordinator', () => {
           width: 1920
         }
       },
-      destroyTray: vi.fn(),
       emitAnswer: vi.fn(),
       quit: vi.fn(),
       stream: async (input) => {
@@ -63,7 +62,6 @@ describe('AppCoordinator', () => {
         height: 1080,
         width: 1920
       }),
-      destroyTray: vi.fn(),
       emitAnswer: vi.fn(),
       quit: vi.fn(),
       stream: async (_input, _emit, signal) => {
@@ -97,11 +95,9 @@ describe('AppCoordinator', () => {
 
   it('cleans owned resources before quitting', () => {
     const unregisterHotkeys = vi.fn()
-    const destroyTray = vi.fn()
     const quit = vi.fn()
     const coordinator = new AppCoordinator({
       capture: vi.fn(),
-      destroyTray,
       emitAnswer: vi.fn(),
       quit,
       stream: vi.fn(),
@@ -111,7 +107,6 @@ describe('AppCoordinator', () => {
     coordinator.shutdown()
 
     expect(unregisterHotkeys).toHaveBeenCalledOnce()
-    expect(destroyTray).toHaveBeenCalledOnce()
     expect(quit).toHaveBeenCalledOnce()
   })
 })
