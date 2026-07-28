@@ -1,6 +1,6 @@
 {
   "name": "practice-copilot",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Protected translucent Windows practice assistant with BYOK multimodal streaming",
   "author": "Practice Copilot Contributors",
   "license": "MIT",
@@ -44,6 +44,8 @@
     "appId": "com.practicecopilot.desktop",
     "productName": "Practice Copilot",
     "asar": true,
+    "artifactName": "Practice-Copilot-v${version}-${os}-${arch}.${ext}",
+    "electronDist": "node_modules/electron/dist",
     "directories": {
       "output": "release"
     },
