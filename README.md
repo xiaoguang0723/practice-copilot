@@ -24,6 +24,18 @@ npm run package:dir
 
 `package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`。
 
+## 多模态模型
+
+本应用会将主屏幕截图作为图片输入发送给模型，因此需要支持 OpenAI Chat Completions 图片消息格式和流式输出的多模态模型服务。
+
+推荐使用[小米 MiMo 开放平台](https://platform.xiaomimimo.com/)的 `mimo-v2.5` 模型。它支持 Base64 图片输入，可直接与本应用兼容。创建 API Key 后，在设置中填写：
+
+```text
+API Base URL: https://api.xiaomimimo.com/v1
+模型名: mimo-v2.5
+API Key: 你的 MiMo API Key
+```
+
 ## 使用
 
 首次启动会打开设置页，填写：
