@@ -47,6 +47,17 @@ export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
   if (patch.persistentPrompt !== undefined && patch.persistentPrompt.length > 8000) {
     return { message: '提示词不能超过 8000 个字符', ok: false }
   }
+  if (patch.knowledgeBaseEnabled !== undefined && typeof patch.knowledgeBaseEnabled !== 'boolean') {
+    return { message: '知识库开关无效', ok: false }
+  }
+  if (patch.selectedKnowledgeBaseIds !== undefined) {
+    if (
+      patch.selectedKnowledgeBaseIds.length > 20 ||
+      patch.selectedKnowledgeBaseIds.some((id) => typeof id !== 'string' || id.length === 0 || id.length > 100)
+    ) {
+      return { message: '已选知识库无效', ok: false }
+    }
+  }
   if (patch.apiKey !== undefined && patch.apiKey.length > 4096) {
     return { message: 'API Key 长度无效', ok: false }
   }

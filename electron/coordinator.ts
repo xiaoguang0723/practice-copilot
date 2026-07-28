@@ -12,6 +12,7 @@ export interface CoordinatorDependencies {
   capture(): Promise<CapturedScreen>
   emitAnswer(event: AnswerEvent): void
   quit(): void
+  retrieve?(input: StreamVisionOptions, signal: AbortSignal): Promise<string | undefined>
   stream(
     input: StreamVisionOptions,
     emitDelta: (delta: string) => void,
@@ -70,8 +71,20 @@ export class AppCoordinator {
     input: StreamVisionOptions
   ): Promise<void> {
     try {
+      let knowledgeContext: string | undefined
+      if (
+        input.knowledgeBaseEnabled &&
+        input.selectedKnowledgeBaseIds?.length &&
+        this.dependencies.retrieve
+      ) {
+        try {
+          knowledgeContext = await this.dependencies.retrieve(input, controller.signal)
+        } catch {
+          knowledgeContext = undefined
+        }
+      }
       await this.dependencies.stream(
-        input,
+        { ...input, knowledgeContext },
         (delta) => this.dependencies.emitAnswer({ delta, requestId, type: 'delta' }),
         controller.signal
       )

@@ -10,18 +10,22 @@ export interface PublicSettings {
   apiKeySet: boolean
   baseUrl: string
   hotkeys: HotkeySettings
+  knowledgeBaseEnabled: boolean
   model: string
   opacity: number
   persistentPrompt: string
+  selectedKnowledgeBaseIds: string[]
 }
 
 export interface SettingsPatch {
   apiKey?: string
   baseUrl?: string
   hotkeys?: Partial<HotkeySettings>
+  knowledgeBaseEnabled?: boolean
   model?: string
   opacity?: number
   persistentPrompt?: string
+  selectedKnowledgeBaseIds?: string[]
 }
 
 export type AnswerEvent =
@@ -35,6 +39,8 @@ export interface CaptureResult {
   height: number
   width: number
 }
+export interface KnowledgeBaseSummary { createdAt: number; id: string; name: string; updatedAt: number }
+export interface KnowledgeDocument { content: string; createdAt: number; id: string; knowledgeBaseId: string; name: string; updatedAt: number }
 
 export type HotkeyAction =
   | 'answer'
@@ -59,6 +65,9 @@ export const IPC = {
   CAPTURE_PRIMARY: 'capture:primary',
   CAPTURE_CLEAR: 'capture:clear',
   HOTKEY_ACTION: 'hotkeys:action',
+  KNOWLEDGE_CREATE: 'knowledge:create', KNOWLEDGE_DELETE: 'knowledge:delete', KNOWLEDGE_DOCUMENT_DELETE: 'knowledge:document-delete',
+  KNOWLEDGE_DOCUMENT_IMPORT: 'knowledge:document-import', KNOWLEDGE_DOCUMENT_LIST: 'knowledge:document-list', KNOWLEDGE_DOCUMENT_UPDATE: 'knowledge:document-update',
+  KNOWLEDGE_LIST: 'knowledge:list', KNOWLEDGE_RENAME: 'knowledge:rename',
   SETTINGS_CLEAR_API_KEY: 'settings:clear-api-key',
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
@@ -83,6 +92,16 @@ export interface PracticeApi {
   hotkeys: {
     onAction(callback: (action: HotkeyAction) => void): () => void
   }
+  knowledge: {
+    create(name: string): Promise<KnowledgeBaseSummary>
+    delete(id: string): Promise<void>
+    deleteDocument(id: string): Promise<void>
+    importDocument(input: { content: string; knowledgeBaseId: string; name: string }): Promise<KnowledgeDocument>
+    list(): Promise<KnowledgeBaseSummary[]>
+    listDocuments(knowledgeBaseId: string): Promise<KnowledgeDocument[]>
+    rename(id: string, name: string): Promise<KnowledgeBaseSummary>
+    updateDocument(id: string, content: string): Promise<KnowledgeDocument>
+  }
   settings: {
     clearApiKey(): Promise<PublicSettings>
     get(): Promise<PublicSettings>
@@ -106,8 +125,10 @@ export function createDefaultSettings(): PublicSettings {
       quit: 'Alt+X',
       toggle: 'Alt+E'
     },
+    knowledgeBaseEnabled: false,
     model: 'gpt-4.1-mini',
     opacity: 0.88,
-    persistentPrompt: ''
+    persistentPrompt: '',
+    selectedKnowledgeBaseIds: []
   }
 }

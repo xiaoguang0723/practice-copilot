@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createRequestSignal, streamVisionAnswer } from '../electron/llm/client'
+import { createRequestSignal, extractVisionSearchQuery, streamVisionAnswer } from '../electron/llm/client'
 
 const originalFetch = globalThis.fetch
 
@@ -75,5 +75,17 @@ describe('streamVisionAnswer', () => {
         new AbortController().signal
       )
     ).rejects.toThrow('模型服务返回 HTTP 401')
+  })
+
+  it('makes a short non-streaming vision request to extract retrieval terms', async () => {
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      expect(JSON.parse(String(init?.body))).toMatchObject({ model: 'vision-model', stream: false })
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'nums target 哈希表 两数之和' } }] }), { status: 200 })
+    })
+
+    await expect(extractVisionSearchQuery({
+      apiKey: 'key-secret', baseUrl: 'https://api.example.com/v1', extraPrompt: '',
+      imageDataUrls: ['data:image/jpeg;base64,abc'], model: 'vision-model', persistentPrompt: ''
+    }, new AbortController().signal)).resolves.toBe('nums target 哈希表 两数之和')
   })
 })

@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   main: {
     build: {
-      lib: { entry: 'electron/main.ts' }
+      lib: { entry: 'electron/main.ts' },
+      rollupOptions: { external: ['better-sqlite3'] }
     }
   },
   preload: {

@@ -19,9 +19,11 @@ interface SettingsFile {
   apiKeyEncrypted?: string
   baseUrl: string
   hotkeys: HotkeySettings
+  knowledgeBaseEnabled: boolean
   model: string
   opacity: number
   persistentPrompt: string
+  selectedKnowledgeBaseIds: string[]
   version: 1
 }
 
@@ -29,10 +31,12 @@ function defaultFile(): SettingsFile {
   const defaults = createDefaultSettings()
   return {
     baseUrl: defaults.baseUrl,
-    hotkeys: { ...defaults.hotkeys },
-    model: defaults.model,
-    opacity: defaults.opacity,
-    persistentPrompt: defaults.persistentPrompt,
+      hotkeys: { ...defaults.hotkeys },
+      knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
+      model: defaults.model,
+      opacity: defaults.opacity,
+      persistentPrompt: defaults.persistentPrompt,
+      selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
     version: 1
   }
 }
@@ -52,9 +56,11 @@ export class SettingsStore {
       apiKeySet: Boolean(this.data.apiKeyEncrypted),
       baseUrl: this.data.baseUrl,
       hotkeys: { ...this.data.hotkeys },
+      knowledgeBaseEnabled: this.data.knowledgeBaseEnabled,
       model: this.data.model,
       opacity: this.data.opacity,
-      persistentPrompt: this.data.persistentPrompt
+      persistentPrompt: this.data.persistentPrompt,
+      selectedKnowledgeBaseIds: [...this.data.selectedKnowledgeBaseIds]
     }
   }
 
@@ -76,6 +82,10 @@ export class SettingsStore {
     if (patch.opacity !== undefined) this.data.opacity = patch.opacity
     if (patch.persistentPrompt !== undefined) this.data.persistentPrompt = patch.persistentPrompt
     if (patch.hotkeys) this.data.hotkeys = { ...this.data.hotkeys, ...patch.hotkeys }
+    if (patch.knowledgeBaseEnabled !== undefined) this.data.knowledgeBaseEnabled = patch.knowledgeBaseEnabled
+    if (patch.selectedKnowledgeBaseIds !== undefined) {
+      this.data.selectedKnowledgeBaseIds = [...new Set(patch.selectedKnowledgeBaseIds)]
+    }
     if (patch.apiKey !== undefined && patch.apiKey !== '') {
       if (!this.cipher.available()) throw new Error('系统安全存储不可用，无法保存 API Key')
       this.data.apiKeyEncrypted = this.cipher.encrypt(patch.apiKey)
@@ -100,6 +110,10 @@ export class SettingsStore {
         apiKeyEncrypted: raw.apiKeyEncrypted,
         baseUrl: typeof raw.baseUrl === 'string' ? raw.baseUrl : defaults.baseUrl,
         hotkeys: { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },
+        knowledgeBaseEnabled:
+          typeof raw.knowledgeBaseEnabled === 'boolean'
+            ? raw.knowledgeBaseEnabled
+            : defaults.knowledgeBaseEnabled,
         model: typeof raw.model === 'string' ? raw.model : defaults.model,
         opacity:
           typeof raw.opacity === 'number' && raw.opacity >= 0.35 && raw.opacity <= 0.95
@@ -107,6 +121,9 @@ export class SettingsStore {
             : defaults.opacity,
         persistentPrompt:
           typeof raw.persistentPrompt === 'string' ? raw.persistentPrompt : defaults.persistentPrompt,
+        selectedKnowledgeBaseIds: Array.isArray(raw.selectedKnowledgeBaseIds)
+          ? raw.selectedKnowledgeBaseIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+          : defaults.selectedKnowledgeBaseIds,
         version: 1
       }
     } catch {

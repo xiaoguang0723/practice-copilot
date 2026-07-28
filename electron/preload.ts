@@ -31,6 +31,16 @@ const api: PracticeApi = {
       return () => ipcRenderer.removeListener(IPC.HOTKEY_ACTION, listener)
     }
   },
+  knowledge: {
+    create: (name) => ipcRenderer.invoke(IPC.KNOWLEDGE_CREATE, name),
+    delete: (id) => ipcRenderer.invoke(IPC.KNOWLEDGE_DELETE, id),
+    deleteDocument: (id) => ipcRenderer.invoke(IPC.KNOWLEDGE_DOCUMENT_DELETE, id),
+    importDocument: (input) => ipcRenderer.invoke(IPC.KNOWLEDGE_DOCUMENT_IMPORT, input),
+    list: () => ipcRenderer.invoke(IPC.KNOWLEDGE_LIST),
+    listDocuments: (id) => ipcRenderer.invoke(IPC.KNOWLEDGE_DOCUMENT_LIST, id),
+    rename: (id, name) => ipcRenderer.invoke(IPC.KNOWLEDGE_RENAME, id, name),
+    updateDocument: (id, content) => ipcRenderer.invoke(IPC.KNOWLEDGE_DOCUMENT_UPDATE, id, content)
+  },
   settings: {
     clearApiKey: () => ipcRenderer.invoke(IPC.SETTINGS_CLEAR_API_KEY),
     get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),

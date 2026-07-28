@@ -73,6 +73,28 @@ describe('SettingsStore', () => {
     expect(reloaded.getPublic().opacity).toBe(0.65)
   })
 
+  it('keeps knowledge retrieval disabled until the user explicitly enables selected libraries', () => {
+    const { filePath, store } = createStore()
+
+    expect(store.getPublic().knowledgeBaseEnabled).toBe(false)
+    expect(store.getPublic().selectedKnowledgeBaseIds).toEqual([])
+
+    store.applyPatch({
+      knowledgeBaseEnabled: true,
+      selectedKnowledgeBaseIds: ['library-a', 'library-b']
+    })
+
+    const reloaded = new SettingsStore(filePath, {
+      available: () => true,
+      decrypt: (value) => Buffer.from(value, 'base64').toString('utf8'),
+      encrypt: (value) => Buffer.from(value).toString('base64')
+    })
+    expect(reloaded.getPublic()).toMatchObject({
+      knowledgeBaseEnabled: true,
+      selectedKnowledgeBaseIds: ['library-a', 'library-b']
+    })
+  })
+
   it('refuses to store a key when secure storage is unavailable', () => {
     const directory = mkdtempSync(join(tmpdir(), 'practice-copilot-'))
     directories.push(directory)

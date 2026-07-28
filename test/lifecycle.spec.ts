@@ -109,4 +109,42 @@ describe('AppCoordinator', () => {
     expect(unregisterHotkeys).toHaveBeenCalledOnce()
     expect(quit).toHaveBeenCalledOnce()
   })
+
+  it('retrieves local knowledge only when the user enables selected libraries', async () => {
+    const retrieve = vi.fn(async () => '来源：两数之和\n哈希表解法')
+    const streamedInputs: Array<{ knowledgeContext?: string }> = []
+    const coordinator = new AppCoordinator({
+      capture: async () => ({
+        capturedAt: 1,
+        dataUrl: 'data:image/jpeg;base64,abc',
+        height: 1080,
+        width: 1920
+      }),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      retrieve,
+      stream: async (input) => {
+        streamedInputs.push(input)
+        return 'ok'
+      },
+      unregisterHotkeys: vi.fn()
+    })
+    await coordinator.capturePrimary()
+
+    coordinator.startAnswer({
+      apiKey: 'key', baseUrl: 'https://example.com/v1', extraPrompt: '', knowledgeBaseEnabled: false,
+      model: 'vision', persistentPrompt: '', selectedKnowledgeBaseIds: ['library-a']
+    })
+    await vi.waitFor(() => expect(streamedInputs).toHaveLength(1))
+    expect(retrieve).not.toHaveBeenCalled()
+    expect(streamedInputs[0].knowledgeContext).toBeUndefined()
+
+    coordinator.startAnswer({
+      apiKey: 'key', baseUrl: 'https://example.com/v1', extraPrompt: '', knowledgeBaseEnabled: true,
+      model: 'vision', persistentPrompt: '', selectedKnowledgeBaseIds: ['library-a']
+    })
+    await vi.waitFor(() => expect(streamedInputs).toHaveLength(2))
+    expect(retrieve).toHaveBeenCalledOnce()
+    expect(streamedInputs[1].knowledgeContext).toContain('哈希表')
+  })
 })

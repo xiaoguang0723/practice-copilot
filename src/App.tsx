@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 
 import type { PublicSettings, SettingsPatch } from '../shared/protocol'
 import { MarkdownAnswer } from './components/MarkdownAnswer'
+import { KnowledgeBasePanel } from './components/KnowledgeBasePanel'
 import { SettingsPanel } from './components/SettingsPanel'
 import { appReducer, initialAppState } from './state'
 
@@ -14,6 +15,7 @@ function errorMessage(error: unknown): string {
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState)
   const [settings, setSettings] = useState<PublicSettings>()
+  const [showKnowledge, setShowKnowledge] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [extraPrompt, setExtraPrompt] = useState('')
   const answerRegionRef = useRef<HTMLElement>(null)
@@ -92,6 +94,9 @@ export function App() {
           <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : 'Alt+Q 截图 · Alt+W 发送'}</span>
         </div>
         <div className="title-actions">
+          <button aria-label="打开知识库" className="icon-button" onClick={() => setShowKnowledge(true)}>
+            K
+          </button>
           <button aria-label="打开设置" className="icon-button" onClick={() => setShowSettings(true)}>
             ⚙
           </button>
@@ -136,6 +141,13 @@ export function App() {
             void window.practice.window.setOpacity(opacity)
           }}
           onSave={saveSettings}
+          settings={settings}
+        />
+      )}
+      {showKnowledge && settings && (
+        <KnowledgeBasePanel
+          onClose={() => setShowKnowledge(false)}
+          onSettingsChange={async () => setSettings(await window.practice.settings.get())}
           settings={settings}
         />
       )}

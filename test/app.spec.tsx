@@ -81,6 +81,16 @@ describe('App hotkey scrolling', () => {
           return () => undefined
         })
       },
+      knowledge: {
+        create: vi.fn(),
+        delete: vi.fn(),
+        deleteDocument: vi.fn(),
+        importDocument: vi.fn(),
+        list: vi.fn(async () => []),
+        listDocuments: vi.fn(async () => []),
+        rename: vi.fn(),
+        updateDocument: vi.fn()
+      },
       settings: {
         clearApiKey: vi.fn(async () => settings),
         get: vi.fn(async () => settings),

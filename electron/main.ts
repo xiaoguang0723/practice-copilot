@@ -16,6 +16,8 @@ import { capturePrimaryDisplay } from './capture'
 import { AppCoordinator } from './coordinator'
 import { registerHotkeys } from './hotkeys'
 import { streamVisionAnswer } from './llm/client'
+import { extractVisionSearchQuery } from './llm/client'
+import { KnowledgeBaseStore } from './knowledge-base'
 import { SettingsStore, type SecretCipher } from './settings'
 import { setPointerThrough } from './window-interaction'
 import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
@@ -42,6 +44,7 @@ async function bootstrap(): Promise<void> {
     encrypt: (plain) => safeStorage.encryptString(plain).toString('base64')
   }
   const settings = new SettingsStore(settingsFile, cipher)
+  const knowledge = new KnowledgeBaseStore(join(app.getPath('userData'), 'knowledge-base'))
   let quitting = false
   let pointerThrough = false
 
@@ -106,8 +109,14 @@ async function bootstrap(): Promise<void> {
     capture: capturePrimaryDisplay,
     emitAnswer: (event) => window.webContents.send(IPC.ANSWER_EVENT, event),
     quit: () => {
+      knowledge.close()
       quitting = true
       app.quit()
+    },
+    retrieve: async (input, signal) => {
+      const query = await extractVisionSearchQuery(input, signal)
+      const matches = knowledge.search(input.selectedKnowledgeBaseIds ?? [], query)
+      return matches.length ? matches.map((match) => `来源：${match.knowledgeBaseName} / ${match.documentName}\n${match.content}`).join('\n\n---\n\n') : undefined
     },
     stream: streamVisionAnswer,
     unregisterHotkeys: () => globalShortcut.unregisterAll()
@@ -146,6 +155,14 @@ async function bootstrap(): Promise<void> {
   if (!initialRegistration.ok) console.error(initialRegistration.message)
 
   ipcMain.handle(IPC.SETTINGS_GET, () => settings.getPublic())
+  ipcMain.handle(IPC.KNOWLEDGE_LIST, () => knowledge.listKnowledgeBases())
+  ipcMain.handle(IPC.KNOWLEDGE_CREATE, (_event, name: unknown) => knowledge.createKnowledgeBase(String(name ?? '')))
+  ipcMain.handle(IPC.KNOWLEDGE_RENAME, (_event, id: unknown, name: unknown) => knowledge.renameKnowledgeBase(String(id ?? ''), String(name ?? '')))
+  ipcMain.handle(IPC.KNOWLEDGE_DELETE, (_event, id: unknown) => knowledge.deleteKnowledgeBase(String(id ?? '')))
+  ipcMain.handle(IPC.KNOWLEDGE_DOCUMENT_LIST, (_event, id: unknown) => knowledge.listDocuments(String(id ?? '')))
+  ipcMain.handle(IPC.KNOWLEDGE_DOCUMENT_DELETE, (_event, id: unknown) => knowledge.deleteDocument(String(id ?? '')))
+  ipcMain.handle(IPC.KNOWLEDGE_DOCUMENT_UPDATE, (_event, id: unknown, content: unknown) => knowledge.updateDocument(String(id ?? ''), String(content ?? '')))
+  ipcMain.handle(IPC.KNOWLEDGE_DOCUMENT_IMPORT, (_event, input: { content?: unknown; knowledgeBaseId?: unknown; name?: unknown }) => knowledge.importDocument({ content: String(input?.content ?? ''), knowledgeBaseId: String(input?.knowledgeBaseId ?? ''), name: String(input?.name ?? '') }))
   ipcMain.handle(IPC.SETTINGS_CLEAR_API_KEY, () => settings.clearApiKey())
   ipcMain.handle(IPC.SETTINGS_SAVE, (_event, patch: SettingsPatch) => {
     const validation = validateSettingsPatch(patch)
@@ -178,8 +195,10 @@ async function bootstrap(): Promise<void> {
       apiKey,
       baseUrl: current.baseUrl,
       extraPrompt: input.extraPrompt,
+      knowledgeBaseEnabled: current.knowledgeBaseEnabled,
       model: current.model,
-      persistentPrompt: current.persistentPrompt
+      persistentPrompt: current.persistentPrompt,
+      selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
   })
   ipcMain.handle(IPC.ANSWER_CANCEL, (_event, requestId: unknown) => {
