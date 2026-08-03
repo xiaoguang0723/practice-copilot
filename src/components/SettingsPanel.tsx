@@ -19,6 +19,7 @@ export function SettingsPanel({
   settings
 }: SettingsPanelProps) {
   const [baseUrl, setBaseUrl] = useState(settings.baseUrl)
+  const [apiProtocol, setApiProtocol] = useState<'chat' | 'response'>(settings.apiProtocol ?? 'chat')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(settings.model)
   const [opacity, setOpacity] = useState(settings.opacity)
@@ -34,7 +35,7 @@ export function SettingsPanel({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const patch: SettingsPatch = { apiKey, baseUrl, hotkeys, model, opacity, persistentPrompt }
+    const patch: SettingsPatch = { apiKey, apiProtocol, baseUrl, hotkeys, model, opacity, persistentPrompt }
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) {
       setError(validation.message)
@@ -64,6 +65,17 @@ export function SettingsPanel({
           </button>
         </div>
 
+        <label>
+          <span>API 接口协议</span>
+          <select
+            aria-label="API 接口协议"
+            value={apiProtocol}
+            onChange={(event) => setApiProtocol(event.target.value as 'chat' | 'response')}
+          >
+            <option value="chat">Chat Completions (/chat/completions)</option>
+            <option value="response">Response API (/responses)</option>
+          </select>
+        </label>
         <label>
           <span>API Base URL</span>
           <input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />

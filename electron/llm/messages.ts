@@ -15,6 +15,14 @@ export type VisionMessage =
       role: 'user'
     }
 
+export interface ResponsesInputMessage {
+  content: Array<
+    | { text: string; type: 'input_text' }
+    | { detail: 'high'; image_url: string; type: 'input_image' }
+  >
+  role: 'system' | 'user'
+}
+
 const BUILT_IN_PROMPT = `你是一个模拟练习解题助手。请准确识别截图中的题目，先给出明确结论，再说明关键推理步骤。遇到编程题时，提供可运行代码、必要说明以及时间和空间复杂度。无法可靠识别时应说明缺失信息，不要编造题目内容。`
 
 export function buildVisionMessages(input: VisionPromptInput): VisionMessage[] {
@@ -31,12 +39,13 @@ export function buildVisionMessages(input: VisionPromptInput): VisionMessage[] {
   }
 
   const extraPrompt = input.extraPrompt.trim()
+  const screenshotContext = `以下 ${input.imageDataUrls.length} 张截图按捕获时间从早到晚排列，请结合全部截图分析题目并给出答案。`
   messages.push({
     content: [
       {
         text: extraPrompt
-          ? `请分析截图中的题目并给出答案。\n\n补充要求：${extraPrompt}`
-          : '请分析截图中的题目并给出答案。',
+          ? `${screenshotContext}\n\n补充要求：${extraPrompt}`
+          : screenshotContext,
         type: 'text'
       },
       ...input.imageDataUrls.map((url) => ({ image_url: { url }, type: 'image_url' as const }))
@@ -44,4 +53,19 @@ export function buildVisionMessages(input: VisionPromptInput): VisionMessage[] {
     role: 'user'
   })
   return messages
+}
+
+export function toResponsesInput(messages: VisionMessage[]): ResponsesInputMessage[] {
+  return messages.map((message) => ({
+    content: typeof message.content === 'string'
+      ? [{ text: message.content, type: 'input_text' }]
+      : message.content.map((item) => item.type === 'text'
+        ? { text: item.text, type: 'input_text' as const }
+        : {
+            detail: 'high' as const,
+            image_url: item.image_url.url,
+            type: 'input_image' as const
+          }),
+    role: message.role
+  }))
 }

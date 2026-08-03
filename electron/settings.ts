@@ -17,6 +17,7 @@ export interface SecretCipher {
 
 interface SettingsFile {
   apiKeyEncrypted?: string
+  apiProtocol: 'chat' | 'response'
   baseUrl: string
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
@@ -30,13 +31,14 @@ interface SettingsFile {
 function defaultFile(): SettingsFile {
   const defaults = createDefaultSettings()
   return {
+    apiProtocol: defaults.apiProtocol,
     baseUrl: defaults.baseUrl,
-      hotkeys: { ...defaults.hotkeys },
-      knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
-      model: defaults.model,
-      opacity: defaults.opacity,
-      persistentPrompt: defaults.persistentPrompt,
-      selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
+    hotkeys: { ...defaults.hotkeys },
+    knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
+    model: defaults.model,
+    opacity: defaults.opacity,
+    persistentPrompt: defaults.persistentPrompt,
+    selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
     version: 1
   }
 }
@@ -54,6 +56,7 @@ export class SettingsStore {
   getPublic(): PublicSettings {
     return {
       apiKeySet: Boolean(this.data.apiKeyEncrypted),
+      apiProtocol: this.data.apiProtocol,
       baseUrl: this.data.baseUrl,
       hotkeys: { ...this.data.hotkeys },
       knowledgeBaseEnabled: this.data.knowledgeBaseEnabled,
@@ -77,6 +80,7 @@ export class SettingsStore {
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) throw new Error(validation.message)
 
+    if (patch.apiProtocol !== undefined) this.data.apiProtocol = patch.apiProtocol
     if (patch.baseUrl !== undefined) this.data.baseUrl = normalizeBaseUrl(patch.baseUrl)
     if (patch.model !== undefined) this.data.model = patch.model.trim()
     if (patch.opacity !== undefined) this.data.opacity = patch.opacity
@@ -108,6 +112,7 @@ export class SettingsStore {
       const raw = JSON.parse(readFileSync(this.filePath, 'utf8')) as Partial<SettingsFile>
       return {
         apiKeyEncrypted: raw.apiKeyEncrypted,
+        apiProtocol: raw.apiProtocol === 'chat' || raw.apiProtocol === 'response' ? raw.apiProtocol : defaults.apiProtocol,
         baseUrl: typeof raw.baseUrl === 'string' ? raw.baseUrl : defaults.baseUrl,
         hotkeys: { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },
         knowledgeBaseEnabled:

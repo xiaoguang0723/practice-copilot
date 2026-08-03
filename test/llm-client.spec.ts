@@ -58,6 +58,54 @@ describe('streamVisionAnswer', () => {
     expect(deltas).toEqual(['答案'])
   })
 
+  it('posts a streamed request to /responses when apiProtocol is response', async () => {
+    const encoder = new TextEncoder()
+    globalThis.fetch = vi.fn(async (url, init) => {
+      expect(String(url)).toBe('https://api.example.com/v1/responses')
+      const body = JSON.parse(String(init?.body))
+      expect(body.input.at(-1).content.slice(1)).toEqual([
+        {
+          detail: 'high',
+          image_url: 'data:image/jpeg;base64,abc',
+          type: 'input_image'
+        },
+        {
+          detail: 'high',
+          image_url: 'data:image/jpeg;base64,def',
+          type: 'input_image'
+        }
+      ])
+      expect(body.model).toBe('vision-model')
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode('data: {"delta":"Responses API 答案"}\n\ndata: [DONE]\n\n'))
+            controller.close()
+          }
+        }),
+        { status: 200 }
+      )
+    })
+    const deltas: string[] = []
+
+    const answer = await streamVisionAnswer(
+      {
+        apiKey: 'key-secret',
+        apiProtocol: 'response',
+        baseUrl: 'https://api.example.com/v1',
+        extraPrompt: '',
+        imageDataUrls: ['data:image/jpeg;base64,abc', 'data:image/jpeg;base64,def'],
+        model: 'vision-model',
+        persistentPrompt: ''
+      },
+      (delta) => deltas.push(delta),
+      new AbortController().signal
+    )
+
+    expect(answer).toBe('Responses API 答案')
+    expect(deltas).toEqual(['Responses API 答案'])
+  })
+
   it('returns a sanitized HTTP error', async () => {
     globalThis.fetch = vi.fn(async () => new Response('api-key-secret leaked', { status: 401 }))
 

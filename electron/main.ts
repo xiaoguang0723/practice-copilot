@@ -193,6 +193,7 @@ async function bootstrap(): Promise<void> {
     if (!apiKey) throw new Error('请先在设置中保存 API Key')
     return coordinator.startAnswer({
       apiKey,
+      apiProtocol: current.apiProtocol,
       baseUrl: current.baseUrl,
       extraPrompt: input.extraPrompt,
       knowledgeBaseEnabled: current.knowledgeBaseEnabled,

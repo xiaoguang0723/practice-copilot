@@ -28,6 +28,21 @@ describe('parseSseStream', () => {
     expect(deltas).toEqual(['你', '好'])
   })
 
+  it('parses Responses API event format (text/output_text/delta)', async () => {
+    const deltas: string[] = []
+    for await (const delta of parseSseStream(
+      stream([
+        'data: {"delta":"Hello"}\n\n',
+        'data: {"response":{"output_text":" World"}}\n\n',
+        'data: [DONE]\n\n'
+      ])
+    )) {
+      deltas.push(delta)
+    }
+
+    expect(deltas).toEqual(['Hello', ' World'])
+  })
+
   it('reports invalid JSON without exposing event data', async () => {
     const collect = async () => {
       for await (const _delta of parseSseStream(stream(['data: {secret}\n\n']))) {

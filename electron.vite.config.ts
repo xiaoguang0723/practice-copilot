@@ -1,3 +1,4 @@
+import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
@@ -18,7 +19,7 @@ export default defineConfig({
   },
   renderer: {
     build: {
-      rollupOptions: { input: 'src/index.html' }
+      rollupOptions: { input: resolve(import.meta.dirname, 'src/index.html') }
     },
     plugins: [react()],
     root: 'src'

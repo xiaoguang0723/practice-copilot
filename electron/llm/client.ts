@@ -1,9 +1,15 @@
-import { normalizeChatCompletionsUrl } from '../../shared/validation'
-import { buildVisionMessages, type VisionMessage, type VisionPromptInput } from './messages'
+import { normalizeApiUrl } from '../../shared/validation'
+import {
+  buildVisionMessages,
+  toResponsesInput,
+  type VisionMessage,
+  type VisionPromptInput
+} from './messages'
 import { parseSseStream } from './sse'
 
 export interface StreamVisionOptions extends VisionPromptInput {
   apiKey: string
+  apiProtocol?: 'chat' | 'response'
   baseUrl: string
   knowledgeBaseEnabled?: boolean
   model: string
@@ -33,12 +39,14 @@ export async function streamVisionAnswer(
 ): Promise<string> {
   const request = createRequestSignal(signal)
   try {
-    const response = await fetch(normalizeChatCompletionsUrl(options.baseUrl), {
-      body: JSON.stringify({
-        messages: buildVisionMessages(options),
-        model: options.model,
-        stream: true
-      }),
+    const targetUrl = normalizeApiUrl(options.baseUrl, options.apiProtocol)
+    const messages = buildVisionMessages(options)
+    const body = options.apiProtocol === 'response'
+      ? { input: toResponsesInput(messages), model: options.model, stream: true }
+      : { messages, model: options.model, stream: true }
+
+    const response = await fetch(targetUrl, {
+      body: JSON.stringify(body),
       headers: {
         Authorization: `Bearer ${options.apiKey}`,
         'Content-Type': 'application/json'
@@ -47,7 +55,10 @@ export async function streamVisionAnswer(
       signal: request.signal
     })
 
-    if (!response.ok) throw new Error(`模型服务返回 HTTP ${response.status}`)
+    if (!response.ok) {
+      const detail = await extractErrorDetail(response, options.apiKey)
+      throw new Error(detail)
+    }
     if (!response.body) throw new Error('模型服务未返回可读取的响应')
 
     let answer = ''
@@ -71,12 +82,14 @@ export async function extractVisionSearchQuery(
 ): Promise<string> {
   const request = createRequestSignal(signal, 45_000)
   try {
-    const response = await fetch(normalizeChatCompletionsUrl(options.baseUrl), {
-      body: JSON.stringify({
-        messages: buildRetrievalMessages(options),
-        model: options.model,
-        stream: false
-      }),
+    const targetUrl = normalizeApiUrl(options.baseUrl, options.apiProtocol)
+    const messages = buildRetrievalMessages(options)
+    const body = options.apiProtocol === 'response'
+      ? { input: toResponsesInput(messages), model: options.model, stream: false }
+      : { messages, model: options.model, stream: false }
+
+    const response = await fetch(targetUrl, {
+      body: JSON.stringify(body),
       headers: {
         Authorization: `Bearer ${options.apiKey}`,
         'Content-Type': 'application/json'
@@ -84,14 +97,44 @@ export async function extractVisionSearchQuery(
       method: 'POST',
       signal: request.signal
     })
-    if (!response.ok) throw new Error(`模型服务返回 HTTP ${response.status}`)
-    const payload = (await response.json()) as { choices?: Array<{ message?: { content?: unknown } }> }
-    const content = payload.choices?.[0]?.message?.content
+    if (!response.ok) {
+      const detail = await extractErrorDetail(response, options.apiKey)
+      throw new Error(detail)
+    }
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: unknown } }>
+      output?: Array<{ content?: Array<{ text?: unknown }> }>
+      output_text?: unknown
+    }
+    let content: unknown = payload.choices?.[0]?.message?.content
+    if (typeof content !== 'string' || !content.trim()) {
+      content = payload.output_text
+    }
+    if (typeof content !== 'string' || !content.trim()) {
+      content = payload.output?.[0]?.content?.[0]?.text
+    }
+
     if (typeof content !== 'string' || !content.trim()) throw new Error('模型未返回检索词')
     return content.trim().slice(0, 1200)
   } finally {
     request.dispose()
   }
+}
+
+async function extractErrorDetail(response: Response, apiKey: string): Promise<string> {
+  let raw = ''
+  try {
+    raw = await response.text()
+  } catch {
+    // Ignore body reading failure
+  }
+  if (apiKey && raw.includes(apiKey)) {
+    raw = raw.replaceAll(apiKey, '***')
+  }
+  const snippet = raw.trim().slice(0, 200)
+  return snippet
+    ? `模型服务返回 HTTP ${response.status}: ${snippet}`
+    : `模型服务返回 HTTP ${response.status}`
 }
 
 function buildRetrievalMessages(input: VisionPromptInput): VisionMessage[] {

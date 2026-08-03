@@ -22,12 +22,26 @@ export function normalizeBaseUrl(baseUrl: string): string {
 
 export function normalizeChatCompletionsUrl(baseUrl: string): string {
   const normalized = normalizeBaseUrl(baseUrl)
-  return normalized.endsWith('/chat/completions')
-    ? normalized
-    : `${normalized}/chat/completions`
+  if (normalized.endsWith('/chat/completions')) return normalized
+  if (normalized.endsWith('/responses')) return normalized.replace(/\/responses$/, '/chat/completions')
+  return `${normalized}/chat/completions`
+}
+
+export function normalizeResponsesUrl(baseUrl: string): string {
+  const normalized = normalizeBaseUrl(baseUrl)
+  if (normalized.endsWith('/responses')) return normalized
+  if (normalized.endsWith('/chat/completions')) return normalized.replace(/\/chat\/completions$/, '/responses')
+  return `${normalized}/responses`
+}
+
+export function normalizeApiUrl(baseUrl: string, protocol: 'chat' | 'response' = 'chat'): string {
+  return protocol === 'response' ? normalizeResponsesUrl(baseUrl) : normalizeChatCompletionsUrl(baseUrl)
 }
 
 export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
+  if (patch.apiProtocol !== undefined && patch.apiProtocol !== 'chat' && patch.apiProtocol !== 'response') {
+    return { message: '接口协议无效', ok: false }
+  }
   if (patch.baseUrl !== undefined) {
     try {
       normalizeBaseUrl(patch.baseUrl)

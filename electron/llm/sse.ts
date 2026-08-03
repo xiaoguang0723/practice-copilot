@@ -1,5 +1,31 @@
-interface ChatCompletionChunk {
+interface ChunkPayload {
   choices?: Array<{ delta?: { content?: string } }>
+  delta?: string | { content?: string }
+  output_text?: string
+  response?: {
+    output_item?: {
+      content?: Array<{ text?: string }>
+    }
+    output_text?: string
+  }
+  text?: string
+}
+
+function extractDeltaText(parsed: ChunkPayload): string | undefined {
+  if (typeof parsed.delta === 'string' && parsed.delta.length > 0) return parsed.delta
+  if (typeof parsed.delta === 'object' && parsed.delta && typeof parsed.delta.content === 'string') {
+    return parsed.delta.content
+  }
+  const chatContent = parsed.choices?.[0]?.delta?.content
+  if (typeof chatContent === 'string' && chatContent.length > 0) return chatContent
+  if (typeof parsed.text === 'string' && parsed.text.length > 0) return parsed.text
+  if (typeof parsed.output_text === 'string' && parsed.output_text.length > 0) return parsed.output_text
+  if (typeof parsed.response?.output_text === 'string' && parsed.response.output_text.length > 0) {
+    return parsed.response.output_text
+  }
+  const itemText = parsed.response?.output_item?.content?.[0]?.text
+  if (typeof itemText === 'string' && itemText.length > 0) return itemText
+  return undefined
 }
 
 function decodeEvent(event: string): string | undefined | 'done' {
@@ -13,13 +39,13 @@ function decodeEvent(event: string): string | undefined | 'done' {
   if (!data) return undefined
   if (data === '[DONE]') return 'done'
 
-  let parsed: ChatCompletionChunk
+  let parsed: ChunkPayload
   try {
-    parsed = JSON.parse(data) as ChatCompletionChunk
+    parsed = JSON.parse(data) as ChunkPayload
   } catch {
     throw new Error('流式响应格式无效')
   }
-  const content = parsed.choices?.[0]?.delta?.content
+  const content = extractDeltaText(parsed)
   return typeof content === 'string' && content.length > 0 ? content : undefined
 }
 

@@ -51,6 +51,7 @@ describe('SettingsStore', () => {
   it('merges partial hotkeys and reloads persisted settings', () => {
     const { filePath, store } = createStore()
     store.applyPatch({
+      apiProtocol: 'response',
       baseUrl: 'https://example.com/v1/',
       hotkeys: { capture: 'Ctrl+Q' },
       opacity: 0.65
@@ -62,6 +63,7 @@ describe('SettingsStore', () => {
       encrypt: (value) => Buffer.from(value).toString('base64')
     })
 
+    expect(reloaded.getPublic().apiProtocol).toBe('response')
     expect(reloaded.getPublic().baseUrl).toBe('https://example.com/v1')
     expect(reloaded.getPublic().hotkeys).toEqual({
       answer: 'Alt+W',

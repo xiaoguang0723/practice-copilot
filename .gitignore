@@ -6,3 +6,5 @@ release/
 .superpowers/
 *.log
 
+/test
+/test

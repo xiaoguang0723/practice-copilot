@@ -60,5 +60,12 @@
         "portable"
       ]
     }
+  },
+  "allowScripts": {
+    "@swc/core@1.15.46": true,
+    "better-sqlite3@13.0.1": true,
+    "electron@41.10.3": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.25.12": true
   }
 }

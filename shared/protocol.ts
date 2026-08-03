@@ -8,6 +8,7 @@ export interface HotkeySettings {
 
 export interface PublicSettings {
   apiKeySet: boolean
+  apiProtocol: 'chat' | 'response'
   baseUrl: string
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
@@ -19,6 +20,7 @@ export interface PublicSettings {
 
 export interface SettingsPatch {
   apiKey?: string
+  apiProtocol?: 'chat' | 'response'
   baseUrl?: string
   hotkeys?: Partial<HotkeySettings>
   knowledgeBaseEnabled?: boolean
@@ -117,6 +119,7 @@ export interface PracticeApi {
 export function createDefaultSettings(): PublicSettings {
   return {
     apiKeySet: false,
+    apiProtocol: 'chat',
     baseUrl: 'https://api.openai.com/v1',
     hotkeys: {
       answer: 'Alt+W',
