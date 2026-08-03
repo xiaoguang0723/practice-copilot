@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { vi } from 'vitest'
 
 import { parseSseStream } from '../electron/llm/sse'
 
@@ -52,6 +53,19 @@ describe('parseSseStream', () => {
 
     await expect(collect()).rejects.toThrow('流式响应格式无效')
     await expect(collect()).rejects.not.toThrow('secret')
+  })
+
+  it('reports activity for every received network chunk', async () => {
+    const onActivity = vi.fn()
+
+    for await (const _delta of parseSseStream(
+      stream(['data: {"delta":"一"}\n', '\ndata: {"delta":"二"}\n\n']),
+      onActivity
+    )) {
+      // Consume the generator.
+    }
+
+    expect(onActivity).toHaveBeenCalledTimes(2)
   })
 })
 

@@ -10,11 +10,30 @@ afterEach(() => {
 })
 
 describe('streamVisionAnswer', () => {
-  it('aborts with a readable timeout reason', async () => {
+  it('uses a five-minute default idle timeout', async () => {
+    vi.useFakeTimers()
+    const request = createRequestSignal(new AbortController().signal)
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000 - 1)
+    expect(request.signal.aborted).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(request.signal.aborted).toBe(true)
+    request.dispose()
+    vi.useRealTimers()
+  })
+
+  it('times out only after a continuous idle period', async () => {
     vi.useFakeTimers()
     const request = createRequestSignal(new AbortController().signal, 50)
 
-    await vi.advanceTimersByTimeAsync(51)
+    await vi.advanceTimersByTimeAsync(40)
+    request.touch()
+    await vi.advanceTimersByTimeAsync(40)
+
+    expect(request.signal.aborted).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(11)
 
     expect(request.signal.aborted).toBe(true)
     expect(request.timedOut()).toBe(true)
@@ -135,5 +154,31 @@ describe('streamVisionAnswer', () => {
       apiKey: 'key-secret', baseUrl: 'https://api.example.com/v1', extraPrompt: '',
       imageDataUrls: ['data:image/jpeg;base64,abc'], model: 'vision-model', persistentPrompt: ''
     }, new AbortController().signal)).resolves.toBe('nums target 哈希表 两数之和')
+  })
+
+  it('uses a two-minute idle timeout for knowledge retrieval', async () => {
+    vi.useFakeTimers()
+    let requestSignal: AbortSignal | undefined
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      requestSignal = init?.signal as AbortSignal
+      return await new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener('abort', () => {
+          reject(new DOMException('aborted', 'AbortError'))
+        })
+      })
+    })
+
+    const pending = extractVisionSearchQuery({
+      apiKey: 'key-secret', baseUrl: 'https://api.example.com/v1', extraPrompt: '',
+      imageDataUrls: ['data:image/jpeg;base64,abc'], model: 'vision-model', persistentPrompt: ''
+    }, new AbortController().signal)
+
+    await vi.advanceTimersByTimeAsync(2 * 60_000 - 1)
+    expect(requestSignal?.aborted).toBe(false)
+
+    const rejection = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    await vi.advanceTimersByTimeAsync(1)
+    await rejection
+    vi.useRealTimers()
   })
 })

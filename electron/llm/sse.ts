@@ -50,7 +50,8 @@ function decodeEvent(event: string): string | undefined | 'done' {
 }
 
 export async function* parseSseStream(
-  stream: ReadableStream<Uint8Array>
+  stream: ReadableStream<Uint8Array>,
+  onActivity?: () => void
 ): AsyncGenerator<string, void, void> {
   const reader = stream.getReader()
   const decoder = new TextDecoder()
@@ -60,6 +61,7 @@ export async function* parseSseStream(
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
+      onActivity?.()
       buffer += decoder.decode(value, { stream: true })
       const events = buffer.split(/\r?\n\r?\n/)
       buffer = events.pop() ?? ''

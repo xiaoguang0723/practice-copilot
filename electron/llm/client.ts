@@ -7,6 +7,9 @@ import {
 } from './messages'
 import { parseSseStream } from './sse'
 
+const ANSWER_IDLE_TIMEOUT_MS = 5 * 60_000
+const RETRIEVAL_IDLE_TIMEOUT_MS = 2 * 60_000
+
 export interface StreamVisionOptions extends VisionPromptInput {
   apiKey: string
   apiProtocol?: 'chat' | 'response'
@@ -19,15 +22,27 @@ export interface StreamVisionOptions extends VisionPromptInput {
 export interface RequestSignal {
   dispose(): void
   signal: AbortSignal
+  touch(): void
   timedOut(): boolean
 }
 
-export function createRequestSignal(parent: AbortSignal, timeoutMs = 120_000): RequestSignal {
+export function createRequestSignal(
+  parent: AbortSignal,
+  timeoutMs = ANSWER_IDLE_TIMEOUT_MS
+): RequestSignal {
   const timeoutController = new AbortController()
-  const timer = setTimeout(() => timeoutController.abort(), timeoutMs)
+  let timer: ReturnType<typeof setTimeout>
+  const armTimer = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => timeoutController.abort(), timeoutMs)
+  }
+  armTimer()
   return {
     dispose: () => clearTimeout(timer),
     signal: AbortSignal.any([parent, timeoutController.signal]),
+    touch: () => {
+      if (!parent.aborted && !timeoutController.signal.aborted) armTimer()
+    },
     timedOut: () => timeoutController.signal.aborted && !parent.aborted
   }
 }
@@ -60,16 +75,17 @@ export async function streamVisionAnswer(
       throw new Error(detail)
     }
     if (!response.body) throw new Error('模型服务未返回可读取的响应')
+    request.touch()
 
     let answer = ''
-    for await (const delta of parseSseStream(response.body)) {
+    for await (const delta of parseSseStream(response.body, request.touch)) {
       answer += delta
       emitDelta(delta)
     }
     if (!answer.trim()) throw new Error('模型服务返回了空回答')
     return answer
   } catch (error) {
-    if (request.timedOut()) throw new Error('模型请求超时，请重试')
+    if (request.timedOut()) throw new Error('模型请求长时间无响应，请重试')
     throw error
   } finally {
     request.dispose()
@@ -80,7 +96,7 @@ export async function extractVisionSearchQuery(
   options: StreamVisionOptions,
   signal: AbortSignal
 ): Promise<string> {
-  const request = createRequestSignal(signal, 45_000)
+  const request = createRequestSignal(signal, RETRIEVAL_IDLE_TIMEOUT_MS)
   try {
     const targetUrl = normalizeApiUrl(options.baseUrl, options.apiProtocol)
     const messages = buildRetrievalMessages(options)
@@ -101,6 +117,7 @@ export async function extractVisionSearchQuery(
       const detail = await extractErrorDetail(response, options.apiKey)
       throw new Error(detail)
     }
+    request.touch()
     const payload = (await response.json()) as {
       choices?: Array<{ message?: { content?: unknown } }>
       output?: Array<{ content?: Array<{ text?: unknown }> }>
