@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from '../src/App'
 import { MarkdownAnswer } from '../src/components/MarkdownAnswer'
+import { normalizeMathDelimiters } from '../src/math'
 import { SettingsPanel } from '../src/components/SettingsPanel'
 import {
   createDefaultSettings,
@@ -19,6 +20,19 @@ describe('MarkdownAnswer', () => {
     expect(screen.getByRole('heading', { name: '标题' })).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.getByText('const x = 1')).toBeInTheDocument()
+  })
+
+  it('renders LaTeX block and inline formulas', () => {
+    render(
+      <MarkdownAnswer
+        content={'\\[x_i = \\begin{cases}1,&x>0\\\\-1,&x\\le 0\\end{cases}\\]\n\nInline \\(a_i^2\\)\n\n$\n(2^{n-1}+1)^k\n$'}
+      />
+    )
+
+    expect(document.querySelectorAll('.katex')).toHaveLength(3)
+    expect(normalizeMathDelimiters('[普通文本]')).toBe('[普通文本]')
+    expect(normalizeMathDelimiters('[ x_i^2 + \\sum_i x_i ]')).toContain('$$')
+    expect(normalizeMathDelimiters('$\n(2^{n-1}+1)^k\n$')).toContain('$$')
   })
 })
 

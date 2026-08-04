@@ -1,5 +1,10 @@
+import rehypeKatex from 'rehype-katex'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import 'katex/dist/katex.min.css'
+
+import { normalizeMathDelimiters } from '../math'
 
 export interface MarkdownAnswerProps {
   content: string
@@ -18,7 +23,12 @@ export function MarkdownAnswer({ content, streaming = false }: MarkdownAnswerPro
 
   return (
     <article className="markdown-answer">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown
+        rehypePlugins={[rehypeKatex]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+      >
+        {normalizeMathDelimiters(content)}
+      </ReactMarkdown>
       {streaming && <span aria-hidden="true" className="stream-cursor" />}
     </article>
   )

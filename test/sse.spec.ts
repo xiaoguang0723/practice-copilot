@@ -90,6 +90,18 @@ describe('parseSseStream', () => {
     await expect(collect()).rejects.toThrow('provider_error: upstream failed')
   })
 
+  it('appends only the new suffix from cumulative output_text events', async () => {
+    const deltas: string[] = []
+    for await (const delta of parseSseStream(stream([
+      'data: {"response":{"output_text":"第一"}}\n\n',
+      'data: {"response":{"output_text":"第一第二"}}\n\n'
+    ]))) {
+      deltas.push(delta)
+    }
+
+    expect(deltas).toEqual(['第一', '第二'])
+  })
+
   it('reports invalid JSON without exposing event data', async () => {
     const collect = async () => {
       for await (const _delta of parseSseStream(stream(['data: {secret}\n\n']))) {

@@ -26,7 +26,7 @@ interface ChunkPayload {
 
 type DecodedEvent =
   | { kind: 'completed'; text?: string }
-  | { kind: 'delta'; text: string }
+  | { cumulative?: boolean; kind: 'delta'; text: string }
   | { kind: 'done' }
   | { kind: 'ignored' }
 
@@ -124,7 +124,12 @@ function decodeEvent(event: string): DecodedEvent {
   if (error) throw new Error(error)
 
   const delta = extractDeltaText(parsed)
-  if (delta) return { kind: 'delta', text: delta }
+  if (delta) {
+    const cumulative = !parsed.type && (
+      typeof parsed.output_text === 'string' || typeof parsed.response?.output_text === 'string'
+    )
+    return cumulative ? { cumulative: true, kind: 'delta', text: delta } : { kind: 'delta', text: delta }
+  }
 
   const completed = !sse || parsed.type === 'response.completed'
   if (completed) return { kind: 'completed', text: extractCompletedText(parsed) }
@@ -139,15 +144,27 @@ export async function* parseSseStream(
   const decoder = new TextDecoder()
   let buffer = ''
   let emittedOutput = false
+  let emittedText = ''
 
   const consume = function* (event: string): Generator<string, boolean, void> {
     const decoded = decodeEvent(event)
     if (decoded.kind === 'done') return true
     if (decoded.kind === 'delta') {
       emittedOutput = true
-      yield decoded.text
+      if (decoded.cumulative) {
+        if (decoded.text === emittedText) return false
+        const suffix = decoded.text.startsWith(emittedText)
+          ? decoded.text.slice(emittedText.length)
+          : decoded.text
+        emittedText = decoded.text
+        if (suffix) yield suffix
+      } else {
+        emittedText += decoded.text
+        yield decoded.text
+      }
     } else if (decoded.kind === 'completed' && decoded.text && !emittedOutput) {
       emittedOutput = true
+      emittedText = decoded.text
       yield decoded.text
     }
     return false
