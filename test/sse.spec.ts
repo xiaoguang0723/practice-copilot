@@ -67,6 +67,18 @@ describe('parseSseStream', () => {
     expect(deltas).toEqual(['回答'])
   })
 
+  it('does not append the full text from response.output_text.done', async () => {
+    const deltas: string[] = []
+    for await (const delta of parseSseStream(stream([
+      'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"第一部分"}\n\n',
+      'event: response.output_text.done\ndata: {"type":"response.output_text.done","text":"第一部分完整答案"}\n\n'
+    ]))) {
+      deltas.push(delta)
+    }
+
+    expect(deltas).toEqual(['第一部分'])
+  })
+
   it('falls back to a non-streaming JSON response', async () => {
     const deltas: string[] = []
     for await (const delta of parseSseStream(stream([

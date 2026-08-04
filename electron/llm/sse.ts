@@ -48,6 +48,9 @@ function extractCompletedText(parsed: ChunkPayload): string | undefined {
   if (typeof parsed.output_text === 'string' && parsed.output_text.trim()) {
     return parsed.output_text
   }
+  if (typeof parsed.text === 'string' && parsed.text.trim()) {
+    return parsed.text
+  }
   if (typeof parsed.response?.output_text === 'string' && parsed.response.output_text.trim()) {
     return parsed.response.output_text
   }
@@ -62,6 +65,8 @@ function extractCompletedText(parsed: ChunkPayload): string | undefined {
 }
 
 function extractDeltaText(parsed: ChunkPayload): string | undefined {
+  const typedNonDelta = Boolean(parsed.type && !parsed.type.endsWith('.delta'))
+  if (typedNonDelta) return undefined
   if (typeof parsed.delta === 'string' && parsed.delta.length > 0) return parsed.delta
   if (typeof parsed.delta === 'object' && parsed.delta && typeof parsed.delta.content === 'string') {
     return parsed.delta.content
@@ -131,7 +136,7 @@ function decodeEvent(event: string): DecodedEvent {
     return cumulative ? { cumulative: true, kind: 'delta', text: delta } : { kind: 'delta', text: delta }
   }
 
-  const completed = !sse || parsed.type === 'response.completed'
+  const completed = !sse || parsed.type === 'response.completed' || parsed.type?.endsWith('.done')
   if (completed) return { kind: 'completed', text: extractCompletedText(parsed) }
   return { kind: 'ignored' }
 }
