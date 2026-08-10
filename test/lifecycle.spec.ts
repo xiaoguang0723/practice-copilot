@@ -31,7 +31,8 @@ describe('AppCoordinator', () => {
       baseUrl: 'https://example.com/v1',
       extraPrompt: '',
       model: 'vision',
-      persistentPrompt: ''
+      persistentPrompt: '',
+      userText: '继续'
     })
     await vi.waitFor(() => expect(streamedInputs).toHaveLength(1))
 
@@ -43,14 +44,15 @@ describe('AppCoordinator', () => {
       'data:image/jpeg;base64,6'
     ])
 
-    coordinator.clearCaptures()
+    coordinator.clearConversation()
     expect(() => coordinator.startAnswer({
       apiKey: 'key',
       baseUrl: 'https://example.com/v1',
       extraPrompt: '',
       model: 'vision',
-      persistentPrompt: ''
-    })).toThrow('请先按 Alt+Q 捕获屏幕')
+       persistentPrompt: '',
+       userText: ''
+    })).toThrow('请输入问题或先按 Alt+Q 捕获屏幕')
   })
 
   it('cancels the previous answer when a new answer starts', async () => {
@@ -78,17 +80,19 @@ describe('AppCoordinator', () => {
       baseUrl: 'https://example.com/v1',
       extraPrompt: '',
       model: 'vision',
-      persistentPrompt: ''
+      persistentPrompt: '',
+      userText: '继续'
     })
     coordinator.startAnswer({
       apiKey: 'key',
       baseUrl: 'https://example.com/v1',
       extraPrompt: '',
       model: 'vision',
-      persistentPrompt: ''
+      persistentPrompt: '',
+      userText: '换一个问题'
     })
 
-    expect(signals).toHaveLength(2)
+    await vi.waitFor(() => expect(signals).toHaveLength(2))
     expect(signals[0].aborted).toBe(true)
     expect(signals[1].aborted).toBe(false)
   })
@@ -133,7 +137,7 @@ describe('AppCoordinator', () => {
 
     coordinator.startAnswer({
       apiKey: 'key', baseUrl: 'https://example.com/v1', extraPrompt: '', knowledgeBaseEnabled: false,
-      model: 'vision', persistentPrompt: '', selectedKnowledgeBaseIds: ['library-a']
+      model: 'vision', persistentPrompt: '', selectedKnowledgeBaseIds: ['library-a'], userText: '第一问'
     })
     await vi.waitFor(() => expect(streamedInputs).toHaveLength(1))
     expect(retrieve).not.toHaveBeenCalled()
@@ -141,10 +145,82 @@ describe('AppCoordinator', () => {
 
     coordinator.startAnswer({
       apiKey: 'key', baseUrl: 'https://example.com/v1', extraPrompt: '', knowledgeBaseEnabled: true,
-      model: 'vision', persistentPrompt: '', selectedKnowledgeBaseIds: ['library-a']
+      model: 'vision', persistentPrompt: '', selectedKnowledgeBaseIds: ['library-a'], userText: '第二问'
     })
     await vi.waitFor(() => expect(streamedInputs).toHaveLength(2))
     expect(retrieve).toHaveBeenCalledOnce()
     expect(streamedInputs[1].knowledgeContext).toContain('哈希表')
+  })
+
+  it('summarizes the first ten turns before sending the eleventh turn', async () => {
+    const streamedInputs: Array<{ conversationTurns?: Array<{ userText: string }>; memorySummary?: string }> = []
+    const summaryInputs: Array<{ conversationTurns?: Array<{ userText: string }> }> = []
+    let answerCount = 0
+    const coordinator = new AppCoordinator({
+      capture: vi.fn(),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      stream: async (input) => {
+        streamedInputs.push(input)
+        answerCount += 1
+        return `回答 ${answerCount}`
+      },
+      summarize: async (input) => {
+        summaryInputs.push(input)
+        return '早期对话摘要'
+      },
+      unregisterHotkeys: vi.fn()
+    })
+
+    for (let index = 1; index <= 11; index += 1) {
+      coordinator.startAnswer({
+        apiKey: 'key',
+        baseUrl: 'https://example.com/v1',
+        model: 'vision',
+        persistentPrompt: '',
+        userText: `问题 ${index}`
+      })
+      await vi.waitFor(() => expect(streamedInputs).toHaveLength(index))
+    }
+
+    expect(summaryInputs).toHaveLength(1)
+    expect(summaryInputs[0].conversationTurns?.[0].userText).toBe('问题 1')
+    expect(summaryInputs[0].conversationTurns?.[9].userText).toBe('问题 10')
+    expect(summaryInputs[0].conversationTurns?.at(-1)?.userText).toContain('压缩成事实性记忆')
+    expect(streamedInputs[10].conversationTurns).toHaveLength(1)
+    expect(streamedInputs[10].conversationTurns?.[0].userText).toBe('问题 11')
+    expect(streamedInputs[10].memorySummary).toBe('早期对话摘要')
+  })
+
+  it('passes each complete assistant answer into the next turn', async () => {
+    const inputs: Array<{
+      conversationTurns?: Array<{ assistantText?: string; userText: string }>
+    }> = []
+    const coordinator = new AppCoordinator({
+      capture: vi.fn(),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      stream: async (input) => {
+        inputs.push(input)
+        return `回答 ${inputs.length}`
+      },
+      unregisterHotkeys: vi.fn()
+    })
+
+    coordinator.startAnswer({
+      apiKey: 'key', apiProtocol: 'response', baseUrl: 'https://example.com/v1',
+      model: 'vision', persistentPrompt: '', userText: '第一问'
+    })
+    await vi.waitFor(() => expect(inputs).toHaveLength(1))
+    coordinator.startAnswer({
+      apiKey: 'key', apiProtocol: 'response', baseUrl: 'https://example.com/v1',
+      model: 'vision', persistentPrompt: '', userText: '第二问'
+    })
+    await vi.waitFor(() => expect(inputs).toHaveLength(2))
+
+    expect(inputs[1].conversationTurns?.[0]).toMatchObject({
+      assistantText: '回答 1',
+      userText: '第一问'
+    })
   })
 })

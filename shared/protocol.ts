@@ -31,9 +31,9 @@ export interface SettingsPatch {
 }
 
 export type AnswerEvent =
-  | { delta: string; requestId: string; type: 'delta' }
-  | { requestId: string; type: 'done' }
-  | { message: string; requestId: string; type: 'error' }
+  | { delta: string; requestId: string; turnId: string; type: 'delta' }
+  | { requestId: string; turnId: string; type: 'done' }
+  | { message: string; requestId: string; turnId: string; type: 'error' }
 
 export interface CaptureResult {
   capturedAt: number
@@ -63,6 +63,7 @@ export const IPC = {
   ANSWER_CANCEL: 'answer:cancel',
   ANSWER_EVENT: 'answer:event',
   ANSWER_START: 'answer:start',
+  CONVERSATION_CLEAR: 'conversation:clear',
   APP_QUIT: 'app:quit',
   CAPTURE_PRIMARY: 'capture:primary',
   CAPTURE_CLEAR: 'capture:clear',
@@ -82,7 +83,7 @@ export interface PracticeApi {
   answer: {
     cancel(requestId: string): Promise<void>
     onEvent(callback: (event: AnswerEvent) => void): () => void
-    start(input: { extraPrompt: string }): Promise<{ requestId: string }>
+    start(input: { text: string }): Promise<{ requestId: string; turnId: string }>
   }
   app: {
     quit(): Promise<void>
@@ -90,6 +91,9 @@ export interface PracticeApi {
   capture: {
     clear(): Promise<void>
     primary(): Promise<CaptureResult>
+  }
+  conversation: {
+    clear(): Promise<void>
   }
   hotkeys: {
     onAction(callback: (action: HotkeyAction) => void): () => void

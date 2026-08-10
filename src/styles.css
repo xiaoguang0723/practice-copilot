@@ -224,6 +224,30 @@ button {
   margin: 0.7em 0;
 }
 
+.conversation-transcript {
+  padding: 18px 18px 28px;
+}
+
+.conversation-turn + .conversation-turn {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.conversation-turn .markdown-answer {
+  padding: 12px 0 0;
+}
+
+.user-message {
+  padding: 9px 11px;
+  border-left: 2px solid rgba(96, 165, 250, 0.6);
+  background: rgba(59, 130, 246, 0.08);
+  color: #dbeafe;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .markdown-answer .katex {
   color: #f1f5f9;
   font-size: 1.04em;

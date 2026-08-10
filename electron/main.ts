@@ -119,6 +119,7 @@ async function bootstrap(): Promise<void> {
       return matches.length ? matches.map((match) => `来源：${match.knowledgeBaseName} / ${match.documentName}\n${match.content}`).join('\n\n---\n\n') : undefined
     },
     stream: streamVisionAnswer,
+    summarize: async (input, signal) => streamVisionAnswer(input, () => undefined, signal),
     unregisterHotkeys: () => globalShortcut.unregisterAll()
   })
 
@@ -184,9 +185,9 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.handle(IPC.CAPTURE_PRIMARY, () => coordinator.capturePrimary())
   ipcMain.handle(IPC.CAPTURE_CLEAR, () => coordinator.clearCaptures())
-  ipcMain.handle(IPC.ANSWER_START, (_event, input: { extraPrompt?: unknown }) => {
-    if (typeof input?.extraPrompt !== 'string' || input.extraPrompt.length > 8000) {
-      throw new Error('临时提示词无效')
+  ipcMain.handle(IPC.ANSWER_START, (_event, input: { text?: unknown }) => {
+    if (typeof input?.text !== 'string' || input.text.length > 8000) {
+      throw new Error('输入内容无效')
     }
     const current = settings.getPublic()
     const apiKey = settings.getApiKey()
@@ -195,13 +196,14 @@ async function bootstrap(): Promise<void> {
       apiKey,
       apiProtocol: current.apiProtocol,
       baseUrl: current.baseUrl,
-      extraPrompt: input.extraPrompt,
+      userText: input.text,
       knowledgeBaseEnabled: current.knowledgeBaseEnabled,
       model: current.model,
       persistentPrompt: current.persistentPrompt,
       selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
   })
+  ipcMain.handle(IPC.CONVERSATION_CLEAR, () => coordinator.clearConversation())
   ipcMain.handle(IPC.ANSWER_CANCEL, (_event, requestId: unknown) => {
     if (typeof requestId === 'string') coordinator.cancelAnswer(requestId)
   })

@@ -24,6 +24,9 @@ const api: PracticeApi = {
     clear: () => ipcRenderer.invoke(IPC.CAPTURE_CLEAR),
     primary: () => ipcRenderer.invoke(IPC.CAPTURE_PRIMARY)
   },
+  conversation: {
+    clear: () => ipcRenderer.invoke(IPC.CONVERSATION_CLEAR)
+  },
   hotkeys: {
     onAction: (callback) => {
       const listener = (_event: Electron.IpcRendererEvent, action: HotkeyAction) => callback(action)

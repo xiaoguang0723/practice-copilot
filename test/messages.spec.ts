@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVisionMessages, toResponsesInput } from '../electron/llm/messages'
+import {
+  buildResponsesConversationInput,
+  buildVisionMessages,
+  toResponsesInput
+} from '../electron/llm/messages'
 
 describe('buildVisionMessages', () => {
   it('orders built-in, persistent, and screenshot prompts', () => {
@@ -59,5 +63,73 @@ describe('buildVisionMessages', () => {
         type: 'input_image'
       }
     ])
+  })
+
+  it('builds recent conversation turns with assistant history and memory', () => {
+    const messages = buildVisionMessages({
+      conversationTurns: [
+        { assistantText: '第一轮回答', imageDataUrls: ['data:image/jpeg;base64,old'], userText: '第一轮问题' },
+        { assistantText: undefined, imageDataUrls: [], userText: '继续解释' }
+      ],
+      extraPrompt: '',
+      imageDataUrls: [],
+      memorySummary: '早期摘要',
+      persistentPrompt: ''
+    })
+
+    expect(messages.some((message) => message.role === 'assistant' && message.content === '第一轮回答')).toBe(true)
+    expect(messages.some((message) => message.role === 'system' && typeof message.content === 'string' && message.content.includes('早期摘要'))).toBe(true)
+  })
+
+  it('keeps historical images and uses string assistant content for Responses', () => {
+    const messages = buildVisionMessages({
+      conversationTurns: [
+        { assistantText: '第一轮回答', imageDataUrls: ['data:image/jpeg;base64,old'], userText: '第一轮问题' },
+        { assistantText: undefined, imageDataUrls: ['data:image/jpeg;base64,current'], userText: '继续解释' }
+      ],
+      extraPrompt: '',
+      imageDataUrls: [],
+      persistentPrompt: ''
+    })
+
+    const input = toResponsesInput(messages)
+    expect(input.find((message) => message.role === 'assistant')).toEqual({
+      content: '第一轮回答',
+      role: 'assistant'
+    })
+    expect(input.some((message) => JSON.stringify(message).includes('data:image/jpeg;base64,old'))).toBe(true)
+    expect(input.at(-1)).toEqual({
+      content: [
+        { text: '继续解释', type: 'input_text' },
+        { detail: 'high', image_url: 'data:image/jpeg;base64,current', type: 'input_image' }
+      ],
+      role: 'user'
+    })
+    expect(input[0].content).toEqual(expect.any(String))
+  })
+
+  it('keeps ten Responses turns alternating between user arrays and assistant strings', () => {
+    const turns = Array.from({ length: 10 }, (_, index) => ({
+      assistantText: `回答 ${index + 1}`,
+      imageDataUrls: [`data:image/jpeg;base64,${index + 1}`],
+      userText: `问题 ${index + 1}`
+    }))
+
+    const input = buildResponsesConversationInput({
+      conversationTurns: turns,
+      extraPrompt: '',
+      imageDataUrls: [],
+      persistentPrompt: ''
+    }).input
+
+    expect(input).toHaveLength(20)
+    for (let index = 0; index < 10; index += 1) {
+      expect(input[index * 2].role).toBe('user')
+      expect(Array.isArray(input[index * 2].content)).toBe(true)
+      expect(input[index * 2 + 1]).toEqual({
+        content: `回答 ${index + 1}`,
+        role: 'assistant'
+      })
+    }
   })
 })

@@ -2,6 +2,10 @@ interface TextContent {
   text?: string
 }
 
+interface ResponseStreamOutputItem extends Record<string, unknown> {
+  content?: TextContent[]
+}
+
 interface ChunkPayload {
   choices?: Array<{
     delta?: { content?: string }
@@ -11,11 +15,11 @@ interface ChunkPayload {
   delta?: string | { content?: string }
   error?: string | { code?: string; message?: string }
   message?: string
-  output?: Array<{ content?: TextContent[] }>
+  output?: ResponseStreamOutputItem[]
   output_text?: string
   response?: {
     error?: { code?: string; message?: string }
-    output?: Array<{ content?: TextContent[] }>
+    output?: ResponseStreamOutputItem[]
     output_item?: { content?: TextContent[] }
     output_text?: string
     status?: string

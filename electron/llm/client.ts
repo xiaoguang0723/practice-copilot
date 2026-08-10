@@ -1,5 +1,6 @@
 import { normalizeApiUrl } from '../../shared/validation'
 import {
+  buildResponsesConversationInput,
   buildVisionMessages,
   toResponsesInput,
   type VisionMessage,
@@ -56,9 +57,24 @@ export async function streamVisionAnswer(
   try {
     const targetUrl = normalizeApiUrl(options.baseUrl, options.apiProtocol)
     const messages = buildVisionMessages(options)
+    const responsesConversation = options.apiProtocol === 'response'
+      ? buildResponsesConversationInput(options)
+      : undefined
     const body = options.apiProtocol === 'response'
-      ? { input: toResponsesInput(messages), model: options.model, stream: true }
-      : { messages, model: options.model, stream: true }
+      ? {
+          input: responsesConversation?.input,
+          instructions: responsesConversation?.instructions,
+          max_output_tokens: options.maxOutputTokens,
+          model: options.model,
+          store: false,
+          stream: true
+        }
+      : {
+          max_tokens: options.maxOutputTokens,
+          messages,
+          model: options.model,
+          stream: true
+        }
 
     const response = await fetch(targetUrl, {
       body: JSON.stringify(body),
@@ -163,7 +179,12 @@ function buildRetrievalMessages(input: VisionPromptInput): VisionMessage[] {
     },
     {
       content: [
-        { text: '提取检索关键词。', type: 'text' },
+        {
+          text: input.extraPrompt.trim()
+            ? `从当前问题和截图提取检索关键词。当前问题：${input.extraPrompt.trim()}`
+            : '提取检索关键词。',
+          type: 'text'
+        },
         ...input.imageDataUrls.map((url) => ({ image_url: { url }, type: 'image_url' as const }))
       ],
       role: 'user'

@@ -89,6 +89,7 @@ describe('App hotkey scrolling', () => {
       },
       app: { quit: vi.fn() },
       capture: { clear: vi.fn(), primary: vi.fn() },
+      conversation: { clear: vi.fn() },
       hotkeys: {
         onAction: vi.fn((callback) => {
           onHotkey = callback

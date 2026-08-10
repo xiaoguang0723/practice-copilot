@@ -156,6 +156,47 @@ describe('streamVisionAnswer', () => {
     }, new AbortController().signal)).resolves.toBe('nums target 哈希表 两数之和')
   })
 
+  it('replays the latest multimodal turns and complete assistant answers in order', async () => {
+    const encoder = new TextEncoder()
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body))
+      expect(body.previous_response_id).toBeUndefined()
+      expect(body.store).toBe(false)
+      expect(body.instructions).toContain('模拟练习解题助手')
+      expect(body.input).toHaveLength(3)
+      expect(body.input[0].content).toEqual([
+        { text: '第一轮问题', type: 'input_text' },
+        { detail: 'high', image_url: 'data:image/jpeg;base64/old', type: 'input_image' }
+      ])
+      expect(body.input[1]).toEqual({ content: '第一轮回答', role: 'assistant' })
+      expect(body.input.at(-1).content).toEqual([
+        { text: '第二轮问题', type: 'input_text' },
+        { detail: 'high', image_url: 'data:image/jpeg;base64/current', type: 'input_image' }
+      ])
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(
+            'data: {"delta":"第二轮回答"}\n\ndata: [DONE]\n\n'
+          ))
+          controller.close()
+        }
+      }), { status: 200 })
+    })
+    await expect(streamVisionAnswer({
+      apiKey: 'key-secret',
+      apiProtocol: 'response',
+      baseUrl: 'https://api.example.com/v1',
+      conversationTurns: [
+        { assistantText: '第一轮回答', imageDataUrls: ['data:image/jpeg;base64/old'], userText: '第一轮问题' },
+        { imageDataUrls: ['data:image/jpeg;base64/current'], userText: '第二轮问题' }
+      ],
+      extraPrompt: '第二轮问题',
+      imageDataUrls: ['data:image/jpeg;base64/current'],
+      model: 'vision-model',
+      persistentPrompt: ''
+    }, () => undefined, new AbortController().signal)).resolves.toBe('第二轮回答')
+  })
+
   it('uses a two-minute idle timeout for knowledge retrieval', async () => {
     vi.useFakeTimers()
     let requestSignal: AbortSignal | undefined
