@@ -4,6 +4,7 @@ import {
   IPC,
   type AnswerEvent,
   type HotkeyAction,
+  type PublicSettings,
   type PracticeApi
 } from '../shared/protocol'
 
@@ -45,8 +46,18 @@ const api: PracticeApi = {
     updateDocument: (id, content) => ipcRenderer.invoke(IPC.KNOWLEDGE_DOCUMENT_UPDATE, id, content)
   },
   settings: {
+    activateApiConfiguration: (id) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_ACTIVATE, id),
     clearApiKey: () => ipcRenderer.invoke(IPC.SETTINGS_CLEAR_API_KEY),
+    copyApiKey: () => ipcRenderer.invoke(IPC.SETTINGS_COPY_API_KEY),
+    createApiConfiguration: (name) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_CREATE, name),
+    deleteApiConfiguration: (id) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_DELETE, id),
     get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
+    moveApiConfiguration: (id, direction) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_MOVE, id, direction),
+    onChange: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, settings: PublicSettings) => callback(settings)
+      ipcRenderer.on(IPC.SETTINGS_CHANGED, listener)
+      return () => ipcRenderer.removeListener(IPC.SETTINGS_CHANGED, listener)
+    },
     save: (patch) => ipcRenderer.invoke(IPC.SETTINGS_SAVE, patch)
   },
   window: {

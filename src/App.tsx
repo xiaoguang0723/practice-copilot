@@ -70,9 +70,15 @@ export function App() {
         })
       }
     })
+    const removeSettingsListener = window.practice.settings.onChange((nextSettings) => {
+      setSettings(nextSettings)
+      setMessage('')
+      dispatch({ type: 'conversation-clear' })
+    })
     return () => {
       removeAnswerListener()
       removeHotkeyListener()
+      removeSettingsListener()
     }
   }, [answer, capture])
 
@@ -102,6 +108,7 @@ export function App() {
         <div className="brand-mark">P</div>
         <div className="brand-copy">
           <strong>Practice Copilot</strong>
+          {settings && <span className="configuration-badge">{settings.apiConfigurations.find((configuration) => configuration.id === settings.activeApiConfigurationId)?.name}</span>}
           <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : 'Alt+Q 截图 · Alt+W 发送'}</span>
         </div>
         <div className="title-actions">
@@ -160,8 +167,14 @@ export function App() {
 
       {showSettings && settings && (
         <SettingsPanel
+          key={settings.activeApiConfigurationId}
+          onActivateApiConfiguration={async (id) => setSettings(await window.practice.settings.activateApiConfiguration(id))}
           onClearApiKey={async () => setSettings(await window.practice.settings.clearApiKey())}
           onClose={() => setShowSettings(false)}
+          onCopyApiKey={() => window.practice.settings.copyApiKey()}
+          onCreateApiConfiguration={async (name) => setSettings(await window.practice.settings.createApiConfiguration(name))}
+          onDeleteApiConfiguration={async (id) => setSettings(await window.practice.settings.deleteApiConfiguration(id))}
+          onMoveApiConfiguration={async (id, direction) => setSettings(await window.practice.settings.moveApiConfiguration(id, direction))}
           onOpacityPreview={(opacity) => {
             void window.practice.window.setOpacity(opacity)
           }}

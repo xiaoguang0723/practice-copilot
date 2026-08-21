@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import {
   app,
   BrowserWindow,
+  clipboard,
   globalShortcut,
   ipcMain,
   safeStorage,
@@ -123,12 +124,32 @@ async function bootstrap(): Promise<void> {
     unregisterHotkeys: () => globalShortcut.unregisterAll()
   })
 
+  const publishSettings = (current = settings.getPublic()) => {
+    window.webContents.send(IPC.SETTINGS_CHANGED, current)
+    return current
+  }
+
+  const activateApiConfiguration = (id: string) => {
+    const current = settings.activateApiConfiguration(id)
+    coordinator.clearConversation()
+    return publishSettings(current)
+  }
+
+  const activateNextApiConfiguration = () => {
+    const current = settings.getPublic()
+    const index = current.apiConfigurations.findIndex((configuration) => configuration.id === current.activeApiConfigurationId)
+    const next = current.apiConfigurations[(index + 1) % current.apiConfigurations.length]
+    return activateApiConfiguration(next.id)
+  }
+
   const handleAction = (action: HotkeyAction) => {
     if (action === 'quit') coordinator.shutdown()
     else if (action === 'toggle') toggleWindow()
     else if (action === 'clear') {
       coordinator.clearCaptures()
       window.webContents.send(IPC.HOTKEY_ACTION, action)
+    } else if (action === 'configuration-next') {
+      activateNextApiConfiguration()
     } else if (action === 'pointer-through') {
       const enabled = !pointerThrough
       pointerThrough = enabled
@@ -156,6 +177,25 @@ async function bootstrap(): Promise<void> {
   if (!initialRegistration.ok) console.error(initialRegistration.message)
 
   ipcMain.handle(IPC.SETTINGS_GET, () => settings.getPublic())
+  ipcMain.handle(IPC.SETTINGS_CONFIGURATION_ACTIVATE, (_event, id: unknown) => {
+    if (typeof id !== 'string') throw new Error('配置无效')
+    return activateApiConfiguration(id)
+  })
+  ipcMain.handle(IPC.SETTINGS_CONFIGURATION_CREATE, (_event, name: unknown) => {
+    const current = settings.createApiConfiguration(String(name ?? ''))
+    coordinator.clearConversation()
+    return publishSettings(current)
+  })
+  ipcMain.handle(IPC.SETTINGS_CONFIGURATION_DELETE, (_event, id: unknown) => {
+    if (typeof id !== 'string') throw new Error('配置无效')
+    const current = settings.deleteApiConfiguration(id)
+    coordinator.clearConversation()
+    return publishSettings(current)
+  })
+  ipcMain.handle(IPC.SETTINGS_CONFIGURATION_MOVE, (_event, id: unknown, direction: unknown) => {
+    if (typeof id !== 'string' || (direction !== 'up' && direction !== 'down')) throw new Error('配置排序无效')
+    return publishSettings(settings.moveApiConfiguration(id, direction))
+  })
   ipcMain.handle(IPC.KNOWLEDGE_LIST, () => knowledge.listKnowledgeBases())
   ipcMain.handle(IPC.KNOWLEDGE_CREATE, (_event, name: unknown) => knowledge.createKnowledgeBase(String(name ?? '')))
   ipcMain.handle(IPC.KNOWLEDGE_RENAME, (_event, id: unknown, name: unknown) => knowledge.renameKnowledgeBase(String(id ?? ''), String(name ?? '')))
@@ -165,6 +205,11 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle(IPC.KNOWLEDGE_DOCUMENT_UPDATE, (_event, id: unknown, content: unknown) => knowledge.updateDocument(String(id ?? ''), String(content ?? '')))
   ipcMain.handle(IPC.KNOWLEDGE_DOCUMENT_IMPORT, (_event, input: { content?: unknown; knowledgeBaseId?: unknown; name?: unknown }) => knowledge.importDocument({ content: String(input?.content ?? ''), knowledgeBaseId: String(input?.knowledgeBaseId ?? ''), name: String(input?.name ?? '') }))
   ipcMain.handle(IPC.SETTINGS_CLEAR_API_KEY, () => settings.clearApiKey())
+  ipcMain.handle(IPC.SETTINGS_COPY_API_KEY, () => {
+    const apiKey = settings.getApiKey()
+    if (!apiKey) throw new Error('当前配置没有已保存的 API Key')
+    clipboard.writeText(apiKey)
+  })
   ipcMain.handle(IPC.SETTINGS_SAVE, (_event, patch: SettingsPatch) => {
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) throw new Error(validation.message)

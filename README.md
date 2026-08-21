@@ -22,7 +22,7 @@ npm run build
 npm run package:dir
 ```
 
-`package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`。
+`package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`；当前发布包命名为 `Practice-Copilot-v0.4.0-win-x64.exe`。
 
 ## 多模态模型
 
@@ -46,6 +46,12 @@ API Key: 你的 MiMo API Key
 - 可选的持久化提示词
 - 35% 到 95% 的窗口透明度
 
+## API 配置列表
+
+- 设置页可新建、重命名、删除和上下调整多个 API 配置；每个配置独立保存名称、API Key、Base URL、接口协议和模型名。
+- API Key 仍通过 Windows DPAPI 加密保存。点击已保存 Key 旁的“复制”只会由主进程写入系统剪贴板，界面不会读取或显示原始密钥。
+- `Alt+M` 按列表顺序循环切换至下一套配置。切换会取消当前请求，并清空截图队列、对话轮次与历史摘要，以新会话开始；标题栏会显示当前配置名称。
+
 默认快捷键：
 
 | 快捷键 | 功能 |
@@ -53,6 +59,7 @@ API Key: 你的 MiMo API Key
 | `Alt+Q` | 捕获整个主屏幕并加入当前对话轮次，最多保留 5 张待发送截图 |
 | `Alt+W` | 将输入框中的问题和当前轮截图发送给模型 |
 | `Alt+R` | 清空当前截图、对话轮次和历史摘要 |
+| `Alt+M` | 按配置列表顺序切换 API 配置，并开启新会话 |
 | `Alt+D` | 启用或关闭鼠标穿透与不可聚焦模式 |
 | `Alt+↑` / `Alt+↓` | 向上或向下滚动回答内容；不可聚焦时仍可使用 |
 | `Alt+E` | 显示或隐藏悬浮窗 |

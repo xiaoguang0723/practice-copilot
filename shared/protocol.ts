@@ -6,7 +6,18 @@ export interface HotkeySettings {
   toggle: string
 }
 
+export interface ApiConfiguration {
+  apiKeySet: boolean
+  apiProtocol: 'chat' | 'response'
+  baseUrl: string
+  id: string
+  model: string
+  name: string
+}
+
 export interface PublicSettings {
+  activeApiConfigurationId: string
+  apiConfigurations: ApiConfiguration[]
   apiKeySet: boolean
   apiProtocol: 'chat' | 'response'
   baseUrl: string
@@ -19,6 +30,7 @@ export interface PublicSettings {
 }
 
 export interface SettingsPatch {
+  apiConfigName?: string
   apiKey?: string
   apiProtocol?: 'chat' | 'response'
   baseUrl?: string
@@ -48,6 +60,7 @@ export type HotkeyAction =
   | 'answer'
   | 'capture'
   | 'clear'
+  | 'configuration-next'
   | 'move-down'
   | 'move-left'
   | 'move-right'
@@ -72,6 +85,12 @@ export const IPC = {
   KNOWLEDGE_DOCUMENT_IMPORT: 'knowledge:document-import', KNOWLEDGE_DOCUMENT_LIST: 'knowledge:document-list', KNOWLEDGE_DOCUMENT_UPDATE: 'knowledge:document-update',
   KNOWLEDGE_LIST: 'knowledge:list', KNOWLEDGE_RENAME: 'knowledge:rename',
   SETTINGS_CLEAR_API_KEY: 'settings:clear-api-key',
+  SETTINGS_CONFIGURATION_ACTIVATE: 'settings:configuration-activate',
+  SETTINGS_CONFIGURATION_CREATE: 'settings:configuration-create',
+  SETTINGS_CONFIGURATION_DELETE: 'settings:configuration-delete',
+  SETTINGS_CONFIGURATION_MOVE: 'settings:configuration-move',
+  SETTINGS_COPY_API_KEY: 'settings:copy-api-key',
+  SETTINGS_CHANGED: 'settings:changed',
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
   WINDOW_HIDE: 'window:hide',
@@ -109,8 +128,14 @@ export interface PracticeApi {
     updateDocument(id: string, content: string): Promise<KnowledgeDocument>
   }
   settings: {
+    activateApiConfiguration(id: string): Promise<PublicSettings>
     clearApiKey(): Promise<PublicSettings>
+    copyApiKey(): Promise<void>
+    createApiConfiguration(name: string): Promise<PublicSettings>
+    deleteApiConfiguration(id: string): Promise<PublicSettings>
     get(): Promise<PublicSettings>
+    moveApiConfiguration(id: string, direction: 'up' | 'down'): Promise<PublicSettings>
+    onChange(callback: (settings: PublicSettings) => void): () => void
     save(patch: SettingsPatch): Promise<PublicSettings>
   }
   window: {
@@ -121,7 +146,17 @@ export interface PracticeApi {
 }
 
 export function createDefaultSettings(): PublicSettings {
+  const defaultConfiguration: ApiConfiguration = {
+    apiKeySet: false,
+    apiProtocol: 'chat',
+    baseUrl: 'https://api.openai.com/v1',
+    id: 'default',
+    model: 'gpt-4.1-mini',
+    name: '默认配置'
+  }
   return {
+    activeApiConfigurationId: defaultConfiguration.id,
+    apiConfigurations: [defaultConfiguration],
     apiKeySet: false,
     apiProtocol: 'chat',
     baseUrl: 'https://api.openai.com/v1',
