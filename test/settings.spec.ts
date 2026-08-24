@@ -70,6 +70,8 @@ describe('SettingsStore', () => {
       capture: 'Ctrl+Q',
       clear: 'Alt+R',
       quit: 'Alt+X',
+      scrollDown: 'Shift+Down',
+      scrollUp: 'Shift+Up',
       toggle: 'Alt+E'
     })
     expect(reloaded.getPublic().opacity).toBe(0.65)

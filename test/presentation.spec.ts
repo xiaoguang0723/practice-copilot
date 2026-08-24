@@ -23,11 +23,11 @@ describe('answer presentation', () => {
     expect(codeRule).toContain('overflow-wrap: anywhere')
   })
 
-  it('documents focusless pointer-through and answer scrolling shortcuts', () => {
+  it('documents non-activating display and answer scrolling shortcuts', () => {
     const readme = readProjectFile('README.md')
 
     expect(readme).toContain('`Alt+↑` / `Alt+↓`')
-    expect(readme).toContain('Practice Copilot 窗口不可聚焦')
-    expect(readme).toContain('不会因误触本窗口产生前台切换')
+    expect(readme).toContain('显示时不会主动抢占当前前台窗口')
+    expect(readme).toContain('`Alt+E` | 显示或隐藏悬浮窗')
   })
 })

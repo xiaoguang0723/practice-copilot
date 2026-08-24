@@ -1,11 +1,11 @@
-export interface PointerThroughWindow {
-  blur(): void
+export interface OverlayWindow {
   setFocusable(focusable: boolean): void
-  setIgnoreMouseEvents(ignore: boolean, options: { forward: boolean }): void
+  setSkipTaskbar(skip: boolean): void
+  showInactive(): void
 }
 
-export function setPointerThrough(window: PointerThroughWindow, enabled: boolean): void {
-  window.setIgnoreMouseEvents(enabled, { forward: true })
-  window.setFocusable(!enabled)
-  if (enabled) window.blur()
+export function showWithoutActivation(window: OverlayWindow): void {
+  window.setFocusable(true)
+  window.setSkipTaskbar(true)
+  window.showInactive()
 }

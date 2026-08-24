@@ -8,6 +8,8 @@ const oldHotkeys: HotkeySettings = {
   capture: 'Alt+Q',
   clear: 'Alt+R',
   quit: 'Alt+X',
+  scrollDown: 'Shift+Down',
+  scrollUp: 'Shift+Up',
   toggle: 'Alt+E'
 }
 
@@ -29,9 +31,8 @@ describe('registerHotkeys', () => {
       'Alt+R',
       'Alt+E',
       'Alt+X',
-      'Alt+D',
-      'Alt+Up',
-      'Alt+Down',
+      'Shift+Up',
+      'Shift+Down',
       'Control+Up',
       'Control+Down',
       'Control+Left',
@@ -61,9 +62,8 @@ describe('registerHotkeys', () => {
       'Alt+R',
       'Alt+E',
       'Alt+X',
-      'Alt+D',
-      'Alt+Up',
-      'Alt+Down',
+      'Shift+Up',
+      'Shift+Down',
       'Control+Up',
       'Control+Down',
       'Control+Left',

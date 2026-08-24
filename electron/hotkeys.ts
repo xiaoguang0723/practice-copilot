@@ -18,10 +18,11 @@ const orderedActions: Array<Extract<ShortcutAction, keyof HotkeySettings>> = [
   'toggle',
   'quit'
 ]
+const configurableActions: Array<[keyof HotkeySettings, HotkeyAction]> = [
+  ['scrollUp', 'scroll-up'],
+  ['scrollDown', 'scroll-down']
+]
 const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string]> = [
-  ['pointer-through', 'Alt+D'],
-  ['scroll-up', 'Alt+Up'],
-  ['scroll-down', 'Alt+Down'],
   ['move-up', 'Control+Up'],
   ['move-down', 'Control+Down'],
   ['move-left', 'Control+Left'],
@@ -36,6 +37,9 @@ function registerSet(
   for (const action of orderedActions) {
     const accelerator = hotkeys[action]
     if (!registrar.register(accelerator, () => onAction(action))) return accelerator
+  }
+  for (const [key, action] of configurableActions) {
+    if (!registrar.register(hotkeys[key], () => onAction(action))) return hotkeys[key]
   }
   for (const [action, accelerator] of fixedActions) {
     if (!registrar.register(accelerator, () => onAction(action))) return accelerator

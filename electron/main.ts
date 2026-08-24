@@ -19,7 +19,7 @@ import { streamVisionAnswer } from './llm/client'
 import { extractVisionSearchQuery } from './llm/client'
 import { KnowledgeBaseStore } from './knowledge-base'
 import { SettingsStore, type SecretCipher } from './settings'
-import { setPointerThrough } from './window-interaction'
+import { showWithoutActivation } from './window-interaction'
 import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
 
 const DEFAULT_WIDTH = 460
@@ -46,7 +46,6 @@ async function bootstrap(): Promise<void> {
   const settings = new SettingsStore(settingsFile, cipher)
   const knowledge = new KnowledgeBaseStore(join(app.getPath('userData'), 'knowledge-base'))
   let quitting = false
-  let pointerThrough = false
 
   const primaryWorkArea = screen.getPrimaryDisplay().workArea
   const initialBounds = loadBounds(boundsFile, primaryWorkArea)
@@ -55,6 +54,7 @@ async function bootstrap(): Promise<void> {
     alwaysOnTop: true,
     backgroundColor: '#00000000',
     frame: false,
+    focusable: false,
     hasShadow: false,
     minHeight: 440,
     minWidth: 380,
@@ -73,9 +73,14 @@ async function bootstrap(): Promise<void> {
   window.setAlwaysOnTop(true, 'screen-saver')
   window.setContentProtection(true)
   window.setOpacity(settings.getPublic().opacity)
+  window.setSkipTaskbar(true)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', () => showWithoutActivation(window))
+
+  const hideWindow = () => {
+    window.hide()
+  }
 
   const saveBounds = () => {
     if (!window.isDestroyed() && !window.isMinimized()) {
@@ -87,7 +92,7 @@ async function bootstrap(): Promise<void> {
   window.on('close', (event) => {
     if (!quitting) {
       event.preventDefault()
-      window.hide()
+      hideWindow()
     }
   })
 
@@ -98,10 +103,10 @@ async function bootstrap(): Promise<void> {
   }
 
   const toggleWindow = () => {
-    if (window.isVisible()) window.hide()
-    else {
-      window.show()
-      window.focus()
+    if (window.isVisible()) {
+      hideWindow()
+    } else {
+      showWithoutActivation(window)
     }
   }
 
@@ -128,11 +133,6 @@ async function bootstrap(): Promise<void> {
     else if (action === 'toggle') toggleWindow()
     else if (action === 'clear') {
       coordinator.clearCaptures()
-      window.webContents.send(IPC.HOTKEY_ACTION, action)
-    } else if (action === 'pointer-through') {
-      const enabled = !pointerThrough
-      pointerThrough = enabled
-      setPointerThrough(window, enabled)
       window.webContents.send(IPC.HOTKEY_ACTION, action)
     } else if (
       action === 'move-up' ||
@@ -207,7 +207,7 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle(IPC.ANSWER_CANCEL, (_event, requestId: unknown) => {
     if (typeof requestId === 'string') coordinator.cancelAnswer(requestId)
   })
-  ipcMain.handle(IPC.WINDOW_HIDE, () => window.hide())
+  ipcMain.handle(IPC.WINDOW_HIDE, hideWindow)
   ipcMain.handle(IPC.WINDOW_SET_OPACITY, (_event, opacity: unknown) => {
     if (typeof opacity !== 'number') throw new Error('透明度无效')
     const validation = validateSettingsPatch({ opacity })
@@ -218,8 +218,7 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle(IPC.APP_QUIT, () => coordinator.shutdown())
 
   app.on('second-instance', () => {
-    window.show()
-    window.focus()
+    showWithoutActivation(window)
   })
   app.on('before-quit', (event) => {
     if (!quitting) {

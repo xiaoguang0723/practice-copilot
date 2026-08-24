@@ -128,6 +128,8 @@ export function SettingsPanel({
               ['answer', '发送'],
               ['clear', '清空截图'],
               ['toggle', '显示 / 隐藏'],
+              ['scrollUp', '向上滚动回答'],
+              ['scrollDown', '向下滚动回答'],
               ['quit', '退出']
             ] as const
           ).map(([key, label]) => (

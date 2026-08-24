@@ -3,6 +3,8 @@ export interface HotkeySettings {
   capture: string
   clear: string
   quit: string
+  scrollDown: string
+  scrollUp: string
   toggle: string
 }
 
@@ -52,7 +54,6 @@ export type HotkeyAction =
   | 'move-left'
   | 'move-right'
   | 'move-up'
-  | 'pointer-through'
   | 'quit'
   | 'scroll-down'
   | 'scroll-up'
@@ -130,6 +131,8 @@ export function createDefaultSettings(): PublicSettings {
       capture: 'Alt+Q',
       clear: 'Alt+R',
       quit: 'Alt+X',
+      scrollDown: 'Shift+Down',
+      scrollUp: 'Shift+Up',
       toggle: 'Alt+E'
     },
     knowledgeBaseEnabled: false,

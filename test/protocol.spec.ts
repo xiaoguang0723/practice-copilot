@@ -9,6 +9,8 @@ describe('createDefaultSettings', () => {
       capture: 'Alt+Q',
       clear: 'Alt+R',
       quit: 'Alt+X',
+      scrollDown: 'Shift+Down',
+      scrollUp: 'Shift+Up',
       toggle: 'Alt+E'
     })
     expect(createDefaultSettings().opacity).toBe(0.88)
