@@ -75,12 +75,47 @@ describe('SettingsPanel', () => {
     expect(onOpacityPreview).toHaveBeenLastCalledWith(0.88)
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  it('shows named API configurations and copies an already saved key', async () => {
+    const settings = createDefaultSettings()
+    settings.apiConfigurations = [
+      { ...settings.apiConfigurations[0], apiKeySet: true, name: '主线路' },
+      { ...settings.apiConfigurations[0], apiKeySet: false, id: 'backup', name: '备用线路' }
+    ]
+    settings.activeApiConfigurationId = settings.apiConfigurations[0].id
+    settings.apiKeySet = true
+    const onCopyApiKey = vi.fn()
+    const onCreateApiConfiguration = vi.fn(async () => undefined)
+    const onMoveApiConfiguration = vi.fn(async () => undefined)
+
+    render(
+      <SettingsPanel
+        onClose={vi.fn()}
+        onCopyApiKey={onCopyApiKey}
+        onCreateApiConfiguration={onCreateApiConfiguration}
+        onMoveApiConfiguration={onMoveApiConfiguration}
+        onSave={vi.fn()}
+        settings={settings}
+      />
+    )
+
+    expect(screen.getByText('主线路')).toBeInTheDocument()
+    expect(screen.getByText('备用线路')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '复制 API Key' }))
+    await waitFor(() => expect(onCopyApiKey).toHaveBeenCalledOnce())
+    fireEvent.click(screen.getByRole('button', { name: '上移 备用线路' }))
+    await waitFor(() => expect(onMoveApiConfiguration).toHaveBeenCalledWith('backup', 'up'))
+    fireEvent.change(screen.getByLabelText('新配置名称'), { target: { value: '面试线路' } })
+    fireEvent.click(screen.getByRole('button', { name: '新建配置' }))
+    await waitFor(() => expect(onCreateApiConfiguration).toHaveBeenCalledWith('面试线路'))
+  })
 })
 
 describe('App hotkey scrolling', () => {
   it('scrolls the answer region when global scroll actions arrive', async () => {
     let onHotkey: ((action: HotkeyAction) => void) | undefined
     const settings = createDefaultSettings()
+    settings.apiConfigurations[0].name = '主线路'
     const api: PracticeApi = {
       answer: {
         cancel: vi.fn(),
@@ -107,8 +142,14 @@ describe('App hotkey scrolling', () => {
         updateDocument: vi.fn()
       },
       settings: {
+        activateApiConfiguration: vi.fn(async () => settings),
         clearApiKey: vi.fn(async () => settings),
+        copyApiKey: vi.fn(),
+        createApiConfiguration: vi.fn(async () => settings),
+        deleteApiConfiguration: vi.fn(async () => settings),
         get: vi.fn(async () => settings),
+        moveApiConfiguration: vi.fn(async () => settings),
+        onChange: vi.fn(() => () => undefined),
         save: vi.fn(async () => settings)
       },
       window: { hide: vi.fn(), setOpacity: vi.fn(), toggle: vi.fn() }

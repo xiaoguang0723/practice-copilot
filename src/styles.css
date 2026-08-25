@@ -95,6 +95,20 @@ button {
   letter-spacing: 0.02em;
 }
 
+.brand-copy .configuration-badge {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  border: 1px solid rgba(74, 222, 128, 0.26);
+  border-radius: 4px;
+  background: rgba(22, 101, 52, 0.18);
+  color: #bbf7d0;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .title-actions {
   display: flex;
   gap: 5px;
@@ -354,6 +368,17 @@ button {
   color: #e5e7eb;
 }
 
+.settings-panel select {
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.19);
+  border-radius: 8px;
+  outline: none;
+  background: rgba(2, 6, 23, 0.39);
+  color: #e5e7eb;
+  font-size: 11px;
+}
+
 .prompt-footer textarea {
   min-height: 49px;
   resize: none;
@@ -474,6 +499,100 @@ button {
   border-radius: 8px;
   font-size: 11px;
 }
+
+.api-configuration-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.3);
+}
+
+.configuration-section-heading,
+.api-configuration-row,
+.configuration-create,
+.api-key-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.configuration-section-heading {
+  justify-content: space-between;
+  color: #cbd5e1;
+  font-size: 10px;
+}
+
+.configuration-section-heading small {
+  color: #71819a;
+  font-size: 9px;
+}
+
+.configuration-section-heading kbd {
+  padding: 1px 3px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 3px;
+}
+
+.api-configuration-list {
+  display: flex;
+  max-height: 130px;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.api-configuration-row {
+  min-height: 30px;
+  padding: 3px 4px 3px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 6px;
+  background: rgba(2, 6, 23, 0.25);
+}
+
+.api-configuration-row.active {
+  border-color: rgba(96, 165, 250, 0.54);
+  background: rgba(37, 99, 235, 0.13);
+}
+
+.configuration-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: #dbeafe;
+  cursor: pointer;
+  font-size: 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.configuration-order,
+.configuration-delete {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.configuration-delete { color: #fca5a5; }
+.configuration-order:disabled,
+.configuration-delete:disabled { cursor: default; opacity: 0.35; }
+
+.configuration-create input,
+.api-key-input input { min-width: 0; flex: 1; }
+.configuration-create .secondary-button,
+.api-key-input .secondary-button { flex: 0 0 auto; }
 
 .settings-panel textarea {
   resize: vertical;

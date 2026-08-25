@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -110,4 +110,80 @@ describe('SettingsStore', () => {
 
     expect(() => store.applyPatch({ apiKey: 'secret-key' })).toThrow('安全存储')
   })
+
+  it('migrates a legacy single API configuration into a named default configuration', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'practice-copilot-'))
+    directories.push(directory)
+    const filePath = join(directory, 'settings.json')
+    writeFileSync(filePath, JSON.stringify({
+      apiKeyEncrypted: Buffer.from('legacy-key').toString('base64'),
+      apiProtocol: 'response',
+      baseUrl: 'https://legacy.example.com/v1',
+      hotkeys: {},
+      knowledgeBaseEnabled: false,
+      model: 'legacy-model',
+      opacity: 0.88,
+      persistentPrompt: '',
+      selectedKnowledgeBaseIds: [],
+      version: 1
+    }), 'utf8')
+
+    const { store } = createStoreFrom(filePath)
+
+    expect(store.getPublic().apiConfigurations).toEqual([
+      expect.objectContaining({
+        apiKeySet: true,
+        apiProtocol: 'response',
+        baseUrl: 'https://legacy.example.com/v1',
+        model: 'legacy-model',
+        name: '默认配置'
+      })
+    ])
+    expect(store.getApiKey()).toBe('legacy-key')
+  })
+
+  it('creates, reorders, activates, and persists named API configurations', () => {
+    const { filePath, store } = createStore()
+    store.applyPatch({ apiKey: 'first-key', apiConfigName: '主线路' })
+    const afterCreate = store.createApiConfiguration('备用线路')
+    const created = afterCreate.apiConfigurations.find((config) => config.name === '备用线路')
+    expect(created).toBeDefined()
+    expect(afterCreate.activeApiConfigurationId).toBe(created?.id)
+
+    store.applyPatch({ apiKey: 'second-key', model: 'fallback-model' })
+    const afterMove = store.moveApiConfiguration(created!.id, 'up')
+    expect(afterMove.apiConfigurations.map((config) => config.name)).toEqual(['备用线路', '主线路'])
+
+    const primary = afterMove.apiConfigurations.find((config) => config.name === '主线路')!
+    store.activateApiConfiguration(primary.id)
+    expect(store.getApiKey()).toBe('first-key')
+    expect(store.getPublic().model).toBe('gpt-4.1-mini')
+
+    const reloaded = new SettingsStore(filePath, testCipher())
+    expect(reloaded.getPublic().apiConfigurations.map((config) => config.name)).toEqual(['备用线路', '主线路'])
+    expect(reloaded.getPublic().activeApiConfigurationId).toBe(primary.id)
+  })
+
+  it('selects a neighboring configuration when deleting the active one and refuses to delete the last one', () => {
+    const { store } = createStore()
+    const second = store.createApiConfiguration('备用线路')
+    const secondId = second.activeApiConfigurationId
+
+    const afterDelete = store.deleteApiConfiguration(secondId)
+    expect(afterDelete.apiConfigurations).toHaveLength(1)
+    expect(afterDelete.activeApiConfigurationId).not.toBe(secondId)
+    expect(() => store.deleteApiConfiguration(afterDelete.activeApiConfigurationId)).toThrow('至少保留一个')
+  })
 })
+
+function testCipher(): SecretCipher {
+  return {
+    available: () => true,
+    decrypt: (encrypted) => Buffer.from(encrypted, 'base64').toString('utf8'),
+    encrypt: (plain) => Buffer.from(plain).toString('base64')
+  }
+}
+
+function createStoreFrom(filePath: string) {
+  return { filePath, store: new SettingsStore(filePath, testCipher()) }
+}

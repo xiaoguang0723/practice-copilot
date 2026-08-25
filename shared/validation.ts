@@ -39,6 +39,10 @@ export function normalizeApiUrl(baseUrl: string, protocol: 'chat' | 'response' =
 }
 
 export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
+  if (patch.apiConfigName !== undefined) {
+    const name = patch.apiConfigName.trim()
+    if (!name || name.length > 80) return { message: '配置名称必须为 1 到 80 个字符', ok: false }
+  }
   if (patch.apiProtocol !== undefined && patch.apiProtocol !== 'chat' && patch.apiProtocol !== 'response') {
     return { message: '接口协议无效', ok: false }
   }
