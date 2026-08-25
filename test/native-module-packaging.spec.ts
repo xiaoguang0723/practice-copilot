@@ -6,6 +6,7 @@ describe('native module packaging', () => {
   it('keeps better-sqlite3 external to the Electron main bundle', () => {
     const source = readFileSync(join(process.cwd(), 'electron.vite.config.ts'), 'utf8')
 
-    expect(source).toContain("external: ['better-sqlite3']")
+    expect(source).toContain("external: ['better-sqlite3', 'uiohook-napi']")
+    expect(source).toContain("'uiohook-napi'")
   })
 })

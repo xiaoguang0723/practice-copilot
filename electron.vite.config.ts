@@ -6,7 +6,7 @@ export default defineConfig({
   main: {
     build: {
       lib: { entry: 'electron/main.ts' },
-      rollupOptions: { external: ['better-sqlite3'] }
+      rollupOptions: { external: ['better-sqlite3', 'uiohook-napi'] }
     }
   },
   preload: {

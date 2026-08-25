@@ -51,10 +51,6 @@ export class AppCoordinator {
     return { capturedAt, count: this.captures.length, height, width }
   }
 
-  clearCaptures(): void {
-    this.clearConversation()
-  }
-
   clearConversation(): void {
     this.active?.controller.abort()
     this.turns = []

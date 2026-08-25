@@ -486,6 +486,21 @@ button {
   gap: 9px;
 }
 
+.hotkey-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hotkey-input-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+.hotkey-record-button {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+}
+
 .form-error {
   padding: 7px 9px;
   border: 1px solid rgba(248, 113, 113, 0.28);

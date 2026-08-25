@@ -1,4 +1,5 @@
 import type { HotkeyAction, HotkeySettings } from '../shared/protocol'
+import { isMouseShortcut, type MouseHotkeyManager } from './mouse-hotkeys'
 
 export interface ShortcutRegistrar {
   register(accelerator: string, callback: () => void): boolean
@@ -32,14 +33,19 @@ const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string
 function registerSet(
   registrar: ShortcutRegistrar,
   hotkeys: HotkeySettings,
-  onAction: (action: HotkeyAction) => void
+  onAction: (action: HotkeyAction) => void,
+  mouse?: MouseHotkeyManager
 ): string | undefined {
   for (const action of orderedActions) {
     const accelerator = hotkeys[action]
-    if (!registrar.register(accelerator, () => onAction(action))) return accelerator
+    if (isMouseShortcut(accelerator)) {
+      mouse?.register(accelerator, () => onAction(action))
+    } else if (!registrar.register(accelerator, () => onAction(action))) return accelerator
   }
   for (const [key, action] of configurableActions) {
-    if (!registrar.register(hotkeys[key], () => onAction(action))) return hotkeys[key]
+    const accelerator = hotkeys[key]
+    if (isMouseShortcut(accelerator)) mouse?.register(accelerator, () => onAction(action))
+    else if (!registrar.register(accelerator, () => onAction(action))) return accelerator
   }
   for (const [action, accelerator] of fixedActions) {
     if (!registrar.register(accelerator, () => onAction(action))) return accelerator
@@ -51,13 +57,16 @@ export function registerHotkeys(
   registrar: ShortcutRegistrar,
   next: HotkeySettings,
   previous: HotkeySettings,
-  onAction: (action: HotkeyAction) => void
+  onAction: (action: HotkeyAction) => void,
+  mouse?: MouseHotkeyManager
 ): HotkeyRegistrationResult {
   registrar.unregisterAll()
-  const failed = registerSet(registrar, next, onAction)
+  mouse?.unregisterAll()
+  const failed = registerSet(registrar, next, onAction, mouse)
   if (!failed) return { ok: true }
 
   registrar.unregisterAll()
-  registerSet(registrar, previous, onAction)
+  mouse?.unregisterAll()
+  registerSet(registrar, previous, onAction, mouse)
   return { accelerator: failed, message: `快捷键 ${failed} 注册失败`, ok: false }
 }

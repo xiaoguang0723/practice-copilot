@@ -41,6 +41,16 @@ export function App() {
     }
   }, [])
 
+  const clearConversation = useCallback(async () => {
+    try {
+      await window.practice.conversation.clear()
+      setMessage('')
+      dispatch({ type: 'conversation-clear' })
+    } catch (error) {
+      dispatch({ message: errorMessage(error), type: 'local-error' })
+    }
+  }, [])
+
   useEffect(() => {
     void window.practice.settings.get().then((loaded) => {
       setSettings(loaded)
@@ -58,10 +68,7 @@ export function App() {
     const removeHotkeyListener = window.practice.hotkeys.onAction((action) => {
       if (action === 'capture') void capture()
       if (action === 'answer') void answer()
-      if (action === 'clear') {
-        setMessage('')
-        dispatch({ type: 'conversation-clear' })
-      }
+      if (action === 'clear') void clearConversation()
       if (action === 'settings') setShowSettings(true)
       if (action === 'scroll-down' || action === 'scroll-up') {
         answerRegionRef.current?.scrollBy({
@@ -74,18 +81,12 @@ export function App() {
       removeAnswerListener()
       removeHotkeyListener()
     }
-  }, [answer, capture])
+  }, [answer, capture, clearConversation])
 
   const saveSettings = async (patch: SettingsPatch) => {
     const saved = await window.practice.settings.save(patch)
     setSettings(saved)
     setShowSettings(false)
-  }
-
-  const clearConversation = async () => {
-    await window.practice.conversation.clear()
-    setMessage('')
-    dispatch({ type: 'conversation-clear' })
   }
 
   const captureStatus = state.capture
@@ -154,6 +155,7 @@ export function App() {
           <span><kbd>Alt</kbd> + <kbd>Q</kbd> 截图</span>
           <span><kbd>Alt</kbd> + <kbd>W</kbd> 发送</span>
           <span><kbd>Alt</kbd> + <kbd>R</kbd> 清空</span>
+          <button onClick={() => void clearConversation()} type="button">清除截图</button>
           <button onClick={() => void answer()} type="button">发送</button>
         </div>
       </footer>

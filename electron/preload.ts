@@ -21,7 +21,6 @@ const api: PracticeApi = {
     quit: () => ipcRenderer.invoke(IPC.APP_QUIT)
   },
   capture: {
-    clear: () => ipcRenderer.invoke(IPC.CAPTURE_CLEAR),
     primary: () => ipcRenderer.invoke(IPC.CAPTURE_PRIMARY)
   },
   conversation: {
@@ -32,7 +31,8 @@ const api: PracticeApi = {
       const listener = (_event: Electron.IpcRendererEvent, action: HotkeyAction) => callback(action)
       ipcRenderer.on(IPC.HOTKEY_ACTION, listener)
       return () => ipcRenderer.removeListener(IPC.HOTKEY_ACTION, listener)
-    }
+    },
+    record: () => ipcRenderer.invoke(IPC.HOTKEY_RECORD)
   },
   knowledge: {
     create: (name) => ipcRenderer.invoke(IPC.KNOWLEDGE_CREATE, name),

@@ -27,6 +27,7 @@ export function SettingsPanel({
   const [hotkeys, setHotkeys] = useState({ ...settings.hotkeys })
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
+  const [recordingKey, setRecordingKey] = useState<string>()
 
   const cancel = () => {
     onOpacityPreview?.(settings.opacity)
@@ -49,6 +50,19 @@ export function SettingsPanel({
       setError(saveError instanceof Error ? saveError.message : '设置保存失败')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const recordHotkey = async (key: keyof typeof hotkeys) => {
+    setRecordingKey(key)
+    setError(undefined)
+    try {
+      const value = await window.practice.hotkeys.record()
+      setHotkeys((current) => ({ ...current, [key]: value }))
+    } catch (recordError) {
+      setError(recordError instanceof Error ? recordError.message : '快捷键录制失败')
+    } finally {
+      setRecordingKey(undefined)
     }
   }
 
@@ -133,12 +147,24 @@ export function SettingsPanel({
               ['quit', '退出']
             ] as const
           ).map(([key, label]) => (
-            <label key={key}>
+            <label key={key} className="hotkey-field">
               <span>{label}</span>
-              <input
-                value={hotkeys[key]}
-                onChange={(event) => setHotkeys((current) => ({ ...current, [key]: event.target.value }))}
-              />
+              <div className="hotkey-input-row">
+                <input
+                  aria-label={`${label}快捷键`}
+                  value={hotkeys[key]}
+                  onChange={(event) => setHotkeys((current) => ({ ...current, [key]: event.target.value }))}
+                />
+                <button
+                  aria-label={`录制${label}快捷键`}
+                  className="secondary-button hotkey-record-button"
+                  disabled={recordingKey !== undefined}
+                  onClick={() => void recordHotkey(key)}
+                  type="button"
+                >
+                  {recordingKey === key ? '按键中…' : '录制'}
+                </button>
+              </div>
             </label>
           ))}
         </div>

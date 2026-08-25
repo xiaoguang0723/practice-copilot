@@ -20,6 +20,7 @@ import { extractVisionSearchQuery } from './llm/client'
 import { KnowledgeBaseStore } from './knowledge-base'
 import { SettingsStore, type SecretCipher } from './settings'
 import { showWithoutActivation } from './window-interaction'
+import { MouseHotkeyManager } from './mouse-hotkeys'
 import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
 
 const DEFAULT_WIDTH = 460
@@ -46,6 +47,7 @@ async function bootstrap(): Promise<void> {
   const settings = new SettingsStore(settingsFile, cipher)
   const knowledge = new KnowledgeBaseStore(join(app.getPath('userData'), 'knowledge-base'))
   let quitting = false
+  const mouseHotkeys = new MouseHotkeyManager()
 
   const primaryWorkArea = screen.getPrimaryDisplay().workArea
   const initialBounds = loadBounds(boundsFile, primaryWorkArea)
@@ -125,16 +127,16 @@ async function bootstrap(): Promise<void> {
     },
     stream: streamVisionAnswer,
     summarize: async (input, signal) => streamVisionAnswer(input, () => undefined, signal),
-    unregisterHotkeys: () => globalShortcut.unregisterAll()
+    unregisterHotkeys: () => {
+      globalShortcut.unregisterAll()
+      mouseHotkeys.unregisterAll()
+    }
   })
 
   const handleAction = (action: HotkeyAction) => {
     if (action === 'quit') coordinator.shutdown()
     else if (action === 'toggle') toggleWindow()
-    else if (action === 'clear') {
-      coordinator.clearCaptures()
-      window.webContents.send(IPC.HOTKEY_ACTION, action)
-    } else if (
+    else if (
       action === 'move-up' ||
       action === 'move-down' ||
       action === 'move-left' ||
@@ -151,7 +153,8 @@ async function bootstrap(): Promise<void> {
     globalShortcut,
     settings.getPublic().hotkeys,
     settings.getPublic().hotkeys,
-    handleAction
+    handleAction,
+    mouseHotkeys
   )
   if (!initialRegistration.ok) console.error(initialRegistration.message)
 
@@ -171,7 +174,7 @@ async function bootstrap(): Promise<void> {
     const previous = settings.getPublic().hotkeys
     const next = { ...previous, ...(patch.hotkeys ?? {}) }
     if (patch.hotkeys) {
-      const result = registerHotkeys(globalShortcut, next, previous, handleAction)
+      const result = registerHotkeys(globalShortcut, next, previous, handleAction, mouseHotkeys)
       if (!result.ok) throw new Error(result.message)
     }
     try {
@@ -179,12 +182,11 @@ async function bootstrap(): Promise<void> {
       if (patch.opacity !== undefined) window.setOpacity(saved.opacity)
       return saved
     } catch (error) {
-      if (patch.hotkeys) registerHotkeys(globalShortcut, previous, previous, handleAction)
+      if (patch.hotkeys) registerHotkeys(globalShortcut, previous, previous, handleAction, mouseHotkeys)
       throw error
     }
   })
   ipcMain.handle(IPC.CAPTURE_PRIMARY, () => coordinator.capturePrimary())
-  ipcMain.handle(IPC.CAPTURE_CLEAR, () => coordinator.clearCaptures())
   ipcMain.handle(IPC.ANSWER_START, (_event, input: { text?: unknown }) => {
     if (typeof input?.text !== 'string' || input.text.length > 8000) {
       throw new Error('输入内容无效')
@@ -203,6 +205,7 @@ async function bootstrap(): Promise<void> {
       selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
   })
+  ipcMain.handle(IPC.HOTKEY_RECORD, () => mouseHotkeys.record())
   ipcMain.handle(IPC.CONVERSATION_CLEAR, () => coordinator.clearConversation())
   ipcMain.handle(IPC.ANSWER_CANCEL, (_event, requestId: unknown) => {
     if (typeof requestId === 'string') coordinator.cancelAnswer(requestId)

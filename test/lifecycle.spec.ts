@@ -152,6 +152,27 @@ describe('AppCoordinator', () => {
     expect(streamedInputs[1].knowledgeContext).toContain('哈希表')
   })
 
+  it('resets the capture count after clearing the pending screenshots', async () => {
+    let captureCount = 0
+    const coordinator = new AppCoordinator({
+      capture: async () => ({
+        capturedAt: ++captureCount,
+        dataUrl: `data:image/jpeg;base64,${captureCount}`,
+        height: 1,
+        width: 1
+      }),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      stream: vi.fn(async () => 'ok'),
+      unregisterHotkeys: vi.fn()
+    })
+
+    expect((await coordinator.capturePrimary()).count).toBe(1)
+    expect((await coordinator.capturePrimary()).count).toBe(2)
+    coordinator.clearConversation()
+    expect((await coordinator.capturePrimary()).count).toBe(1)
+  })
+
   it('summarizes the first ten turns before sending the eleventh turn', async () => {
     const streamedInputs: Array<{ conversationTurns?: Array<{ userText: string }>; memorySummary?: string }> = []
     const summaryInputs: Array<{ conversationTurns?: Array<{ userText: string }> }> = []

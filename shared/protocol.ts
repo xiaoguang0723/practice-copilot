@@ -67,8 +67,8 @@ export const IPC = {
   CONVERSATION_CLEAR: 'conversation:clear',
   APP_QUIT: 'app:quit',
   CAPTURE_PRIMARY: 'capture:primary',
-  CAPTURE_CLEAR: 'capture:clear',
   HOTKEY_ACTION: 'hotkeys:action',
+  HOTKEY_RECORD: 'hotkeys:record',
   KNOWLEDGE_CREATE: 'knowledge:create', KNOWLEDGE_DELETE: 'knowledge:delete', KNOWLEDGE_DOCUMENT_DELETE: 'knowledge:document-delete',
   KNOWLEDGE_DOCUMENT_IMPORT: 'knowledge:document-import', KNOWLEDGE_DOCUMENT_LIST: 'knowledge:document-list', KNOWLEDGE_DOCUMENT_UPDATE: 'knowledge:document-update',
   KNOWLEDGE_LIST: 'knowledge:list', KNOWLEDGE_RENAME: 'knowledge:rename',
@@ -90,7 +90,6 @@ export interface PracticeApi {
     quit(): Promise<void>
   }
   capture: {
-    clear(): Promise<void>
     primary(): Promise<CaptureResult>
   }
   conversation: {
@@ -98,6 +97,7 @@ export interface PracticeApi {
   }
   hotkeys: {
     onAction(callback: (action: HotkeyAction) => void): () => void
+    record(): Promise<string>
   }
   knowledge: {
     create(name: string): Promise<KnowledgeBaseSummary>
