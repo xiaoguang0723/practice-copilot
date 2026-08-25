@@ -69,6 +69,7 @@ describe('SettingsStore', () => {
       answer: 'Alt+W',
       capture: 'Ctrl+Q',
       clear: 'Alt+R',
+      pointerThrough: 'Alt+D',
       quit: 'Alt+X',
       scrollDown: 'Shift+Down',
       scrollUp: 'Shift+Up',

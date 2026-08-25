@@ -2,6 +2,7 @@ export interface HotkeySettings {
   answer: string
   capture: string
   clear: string
+  pointerThrough: string
   quit: string
   scrollDown: string
   scrollUp: string
@@ -67,6 +68,7 @@ export type HotkeyAction =
   | 'move-left'
   | 'move-right'
   | 'move-up'
+  | 'pointer-through'
   | 'quit'
   | 'scroll-down'
   | 'scroll-up'
@@ -165,6 +167,7 @@ export function createDefaultSettings(): PublicSettings {
       answer: 'Alt+W',
       capture: 'Alt+Q',
       clear: 'Alt+R',
+      pointerThrough: 'Alt+D',
       quit: 'Alt+X',
       scrollDown: 'Shift+Down',
       scrollUp: 'Shift+Up',

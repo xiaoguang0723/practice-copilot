@@ -8,6 +8,7 @@ describe('createDefaultSettings', () => {
       answer: 'Alt+W',
       capture: 'Alt+Q',
       clear: 'Alt+R',
+      pointerThrough: 'Alt+D',
       quit: 'Alt+X',
       scrollDown: 'Shift+Down',
       scrollUp: 'Shift+Up',

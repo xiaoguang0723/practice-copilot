@@ -20,7 +20,7 @@ import { streamVisionAnswer } from './llm/client'
 import { extractVisionSearchQuery } from './llm/client'
 import { KnowledgeBaseStore } from './knowledge-base'
 import { SettingsStore, type SecretCipher } from './settings'
-import { showWithoutActivation } from './window-interaction'
+import { setPointerThrough, showWithoutActivation } from './window-interaction'
 import { MouseHotkeyManager } from './mouse-hotkeys'
 import { clampBoundsToWorkArea, moveBoundsWithinWorkArea, positionInWorkArea } from './window-state'
 
@@ -48,6 +48,7 @@ async function bootstrap(): Promise<void> {
   const settings = new SettingsStore(settingsFile, cipher)
   const knowledge = new KnowledgeBaseStore(join(app.getPath('userData'), 'knowledge-base'))
   let quitting = false
+  let pointerThrough = false
   const mouseHotkeys = new MouseHotkeyManager()
 
   const primaryWorkArea = screen.getPrimaryDisplay().workArea
@@ -109,7 +110,7 @@ async function bootstrap(): Promise<void> {
     if (window.isVisible()) {
       hideWindow()
     } else {
-      showWithoutActivation(window)
+      showWithoutActivation(window, !pointerThrough)
     }
   }
 
@@ -156,6 +157,11 @@ async function bootstrap(): Promise<void> {
     if (action === 'quit') coordinator.shutdown()
     else if (action === 'toggle') toggleWindow()
     else if (action === 'configuration-next') activateNextApiConfiguration()
+    else if (action === 'pointer-through') {
+      pointerThrough = !pointerThrough
+      setPointerThrough(window, pointerThrough)
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+    }
     else if (
       action === 'move-up' ||
       action === 'move-down' ||
@@ -265,7 +271,7 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle(IPC.APP_QUIT, () => coordinator.shutdown())
 
   app.on('second-instance', () => {
-    showWithoutActivation(window)
+    showWithoutActivation(window, !pointerThrough)
   })
   app.on('before-quit', (event) => {
     if (!quitting) {

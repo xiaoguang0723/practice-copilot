@@ -22,7 +22,7 @@ npm run build
 npm run package:dir
 ```
 
-`package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`；当前发布包命名为 `Practice-Copilot-v0.4.0-win-x64.exe`。
+`package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`；当前发布包命名为 `Practice-Copilot-v0.4.2-win-x64.exe`。
 
 ## 多模态模型
 
@@ -61,11 +61,12 @@ API Key: 你的 MiMo API Key
 | `Alt+R` | 清空当前截图、对话轮次和历史摘要 |
 | `Shift+↑` / `Shift+↓` | 向上或向下滚动回答内容；可在设置中修改 |
 | `Alt+M` | 按配置列表顺序切换 API 配置，并开启新会话 |
+| `Alt+D` | 启用或关闭鼠标穿透与不可聚焦模式；可在设置中修改 |
 | `Alt+E` | 显示或隐藏悬浮窗 |
 | `Alt+X` | 退出应用进程 |
 | `Ctrl` + 方向键 | 以 24 像素为步长移动悬浮窗 |
 
-Practice Copilot 使用 `Alt+E` 显示时不会主动抢占当前前台窗口。窗口保持可点击、可输入的单一状态；使用 `Alt+↑` / `Alt+↓` 可以在不点击悬浮窗的情况下滚动回答内容。
+Practice Copilot 使用 `Alt+E` 显示时不会主动抢占当前前台窗口。按 `Alt+D` 开启鼠标穿透后，点击会落到后方窗口且悬浮窗不可聚焦；再次按下恢复点击和输入。使用 `Shift+↑` / `Shift+↓` 可以在不点击悬浮窗的情况下滚动回答内容。
 
 设置中的每个快捷键都可以直接编辑，也可以点击“录制”后按下目标按键自动填入。支持键盘组合键以及 Windows 全局鼠标按钮：`MouseMiddle`（鼠标中键）、`Mouse4`（侧键前进）和 `Mouse5`（侧键后退）。
 

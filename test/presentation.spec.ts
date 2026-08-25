@@ -26,7 +26,8 @@ describe('answer presentation', () => {
   it('documents non-activating display and answer scrolling shortcuts', () => {
     const readme = readProjectFile('README.md')
 
-    expect(readme).toContain('`Alt+↑` / `Alt+↓`')
+    expect(readme).toContain('`Shift+↑` / `Shift+↓`')
+    expect(readme).toContain('`Alt+D` | 启用或关闭鼠标穿透')
     expect(readme).toContain('显示时不会主动抢占当前前台窗口')
     expect(readme).toContain('`Alt+E` | 显示或隐藏悬浮窗')
   })

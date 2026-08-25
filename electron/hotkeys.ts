@@ -20,6 +20,7 @@ const orderedActions: Array<Extract<ShortcutAction, keyof HotkeySettings>> = [
   'quit'
 ]
 const configurableActions: Array<[keyof HotkeySettings, HotkeyAction]> = [
+  ['pointerThrough', 'pointer-through'],
   ['scrollUp', 'scroll-up'],
   ['scrollDown', 'scroll-down']
 ]
