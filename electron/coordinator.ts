@@ -61,7 +61,7 @@ export class AppCoordinator {
   startAnswer(input: AnswerInput): { requestId: string; turnId: string } {
     const userText = (input.userText ?? input.extraPrompt ?? '').trim()
     if (!userText && this.captures.length === 0) {
-      throw new Error('请输入问题或先按 Alt+Q 捕获屏幕')
+      throw new Error('请输入问题或先双击左键捕获屏幕')
     }
     this.active?.controller.abort()
 

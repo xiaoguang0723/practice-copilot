@@ -110,7 +110,7 @@ export function App() {
         <div className="brand-copy">
           <strong>Practice Copilot</strong>
           {settings && <span className="configuration-badge">{settings.apiConfigurations.find((configuration) => configuration.id === settings.activeApiConfigurationId)?.name}</span>}
-          <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : 'Alt+Q 截图 · Alt+W 发送'}</span>
+          <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : '左键双击截图 · 右键双击发送'}</span>
         </div>
         <div className="title-actions">
           <button aria-label="新建对话" className="icon-button" onClick={() => void clearConversation()}>
@@ -159,9 +159,9 @@ export function App() {
           onChange={(event) => setMessage(event.target.value)}
         />
         <div className="shortcut-strip">
-          <span><kbd>Alt</kbd> + <kbd>Q</kbd> 截图</span>
-          <span><kbd>Alt</kbd> + <kbd>W</kbd> 发送</span>
-          <span><kbd>Alt</kbd> + <kbd>R</kbd> 清空</span>
+          <span>左键双击截图</span>
+          <span>右键双击发送</span>
+          <span>中键双击清空</span>
           <button onClick={() => void clearConversation()} type="button">清除截图</button>
           <button onClick={() => void answer()} type="button">发送</button>
         </div>

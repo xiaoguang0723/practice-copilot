@@ -47,7 +47,7 @@ interface SettingsFile {
   opacity: number
   persistentPrompt: string
   selectedKnowledgeBaseIds: string[]
-  version: 2
+  version: 3
 }
 
 function defaultFile(): SettingsFile {
@@ -67,7 +67,7 @@ function defaultFile(): SettingsFile {
     opacity: defaults.opacity,
     persistentPrompt: defaults.persistentPrompt,
     selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
-    version: 2
+    version: 3
   }
 }
 
@@ -218,7 +218,7 @@ export class SettingsStore {
     if (!existsSync(this.filePath)) return defaults
     try {
       const raw = JSON.parse(readFileSync(this.filePath, 'utf8')) as LegacySettingsFile & Partial<SettingsFile>
-      if (raw.version === 2 && Array.isArray(raw.apiConfigurations) && raw.apiConfigurations.length) {
+      if (typeof raw.version === 'number' && raw.version >= 2 && Array.isArray(raw.apiConfigurations) && raw.apiConfigurations.length) {
         const configurations = raw.apiConfigurations
           .filter((configuration): configuration is StoredApiConfiguration => Boolean(configuration && typeof configuration === 'object'))
           .map((configuration): StoredApiConfiguration => ({
@@ -257,14 +257,16 @@ export class SettingsStore {
         ? activeId
         : configurations[0].id,
       apiConfigurations: configurations,
-      hotkeys: { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },
+      hotkeys: raw.version === undefined || Number(raw.version) <= 2
+        ? migrateDefaultHotkeys({ ...defaults.hotkeys, ...(raw.hotkeys ?? {}) })
+        : { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },
       knowledgeBaseEnabled: typeof raw.knowledgeBaseEnabled === 'boolean' ? raw.knowledgeBaseEnabled : defaults.knowledgeBaseEnabled,
       opacity: typeof raw.opacity === 'number' && raw.opacity >= 0.35 && raw.opacity <= 0.95 ? raw.opacity : defaults.opacity,
       persistentPrompt: typeof raw.persistentPrompt === 'string' ? raw.persistentPrompt : defaults.persistentPrompt,
       selectedKnowledgeBaseIds: Array.isArray(raw.selectedKnowledgeBaseIds)
         ? raw.selectedKnowledgeBaseIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
         : defaults.selectedKnowledgeBaseIds,
-      version: 2
+      version: 3
     }
   }
 
@@ -274,4 +276,21 @@ export class SettingsStore {
     writeFileSync(temporaryPath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8')
     renameSync(temporaryPath, this.filePath)
   }
+}
+
+function migrateDefaultHotkeys(hotkeys: HotkeySettings): HotkeySettings {
+  const legacyDefaults: Partial<HotkeySettings> = {
+    answer: 'Alt+W',
+    capture: 'Alt+Q',
+    clear: 'Alt+R',
+    scrollDown: 'Shift+Down',
+    scrollUp: 'Shift+Up',
+    toggle: 'Alt+E'
+  }
+  const next = createDefaultSettings().hotkeys
+  const migrated = { ...hotkeys }
+  for (const key of Object.keys(legacyDefaults) as Array<keyof HotkeySettings>) {
+    if (hotkeys[key] === legacyDefaults[key]) migrated[key] = next[key]
+  }
+  return migrated
 }

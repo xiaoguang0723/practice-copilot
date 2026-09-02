@@ -164,14 +164,14 @@ export function createDefaultSettings(): PublicSettings {
     apiProtocol: 'chat',
     baseUrl: 'https://api.openai.com/v1',
     hotkeys: {
-      answer: 'Alt+W',
-      capture: 'Alt+Q',
-      clear: 'Alt+R',
+      answer: 'MouseRightDoubleClick',
+      capture: 'MouseLeftDoubleClick',
+      clear: 'MouseMiddleDoubleClick',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
-      scrollDown: 'Shift+Down',
-      scrollUp: 'Shift+Up',
-      toggle: 'Alt+E'
+      scrollDown: 'MouseLeftHold+WheelDown',
+      scrollUp: 'MouseLeftHold+WheelUp',
+      toggle: 'MouseMiddleLongPress'
     },
     knowledgeBaseEnabled: false,
     model: 'gpt-4.1-mini',

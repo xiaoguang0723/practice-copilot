@@ -4,14 +4,14 @@ import { registerHotkeys, type ShortcutRegistrar } from '../electron/hotkeys'
 import type { HotkeySettings } from '../shared/protocol'
 
 const oldHotkeys: HotkeySettings = {
-  answer: 'Alt+W',
-  capture: 'Alt+Q',
-  clear: 'Alt+R',
+  answer: 'MouseRightDoubleClick',
+  capture: 'MouseLeftDoubleClick',
+  clear: 'MouseMiddleDoubleClick',
   pointerThrough: 'Alt+D',
   quit: 'Alt+X',
-  scrollDown: 'Shift+Down',
-  scrollUp: 'Shift+Up',
-  toggle: 'Alt+E'
+  scrollDown: 'MouseLeftHold+WheelDown',
+  scrollUp: 'MouseLeftHold+WheelUp',
+  toggle: 'MouseMiddleLongPress'
 }
 
 describe('registerHotkeys', () => {
@@ -27,15 +27,8 @@ describe('registerHotkeys', () => {
 
     expect(registerHotkeys(registrar, oldHotkeys, oldHotkeys, () => undefined)).toEqual({ ok: true })
     expect(registered).toEqual([
-      'Alt+Q',
-      'Alt+W',
-      'Alt+R',
-      'Alt+E',
       'Alt+X',
       'Alt+D',
-      'Shift+Up',
-      'Shift+Down',
-      'Alt+M',
       'Control+Up',
       'Control+Down',
       'Control+Left',
@@ -60,15 +53,8 @@ describe('registerHotkeys', () => {
       ok: false
     })
     expect(rounds.at(-1)).toEqual([
-      'Alt+Q',
-      'Alt+W',
-      'Alt+R',
-      'Alt+E',
       'Alt+X',
       'Alt+D',
-      'Shift+Up',
-      'Shift+Down',
-      'Alt+M',
       'Control+Up',
       'Control+Down',
       'Control+Left',

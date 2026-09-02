@@ -109,6 +109,19 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '新建配置' }))
     await waitFor(() => expect(onCreateApiConfiguration).toHaveBeenCalledWith('面试线路'))
   })
+
+  it('restores the default hotkeys in the form without saving immediately', async () => {
+    const settings = createDefaultSettings()
+    settings.hotkeys.capture = 'Control+Q'
+    const onSave = vi.fn()
+    render(<SettingsPanel onClose={vi.fn()} onSave={onSave} settings={settings} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '恢复默认按键' }))
+
+    expect(screen.getByLabelText('截图快捷键')).toHaveValue('MouseLeftDoubleClick')
+    expect(screen.getByLabelText('发送快捷键')).toHaveValue('MouseRightDoubleClick')
+    expect(onSave).not.toHaveBeenCalled()
+  })
 })
 
 describe('App hotkey scrolling', () => {

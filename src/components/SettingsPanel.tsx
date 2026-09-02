@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 
-import type { PublicSettings, SettingsPatch } from '../../shared/protocol'
+import { createDefaultSettings, type PublicSettings, type SettingsPatch } from '../../shared/protocol'
 import { validateSettingsPatch } from '../../shared/validation'
 
 export interface SettingsPanelProps {
@@ -96,6 +96,11 @@ export function SettingsPanel({
     }
   }
 
+  const resetHotkeys = () => {
+    setHotkeys({ ...createDefaultSettings().hotkeys })
+    setError(undefined)
+  }
+
   const createConfiguration = () => {
     const name = newConfigurationName.trim()
     if (!name) {
@@ -128,7 +133,7 @@ export function SettingsPanel({
         <section aria-label="API 配置列表" className="api-configuration-section">
           <div className="configuration-section-heading">
             <span>API 配置</span>
-            <small><kbd>Alt</kbd> + <kbd>M</kbd> 切换</small>
+            <small>左右键同时按下切换</small>
           </div>
           <div className="api-configuration-list">
             {settings.apiConfigurations.map((configuration, index) => (
@@ -226,6 +231,10 @@ export function SettingsPanel({
             </label>
           ))}
         </div>
+
+        <button aria-label="恢复默认按键" className="secondary-button reset-hotkeys-button" onClick={resetHotkeys} type="button">
+          恢复默认按键
+        </button>
 
         {error && <div className="form-error">{error}</div>}
         <div className="settings-actions">

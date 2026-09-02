@@ -5,14 +5,14 @@ import { createDefaultSettings, IPC } from '../shared/protocol'
 describe('createDefaultSettings', () => {
   it('provides the required default accelerators', () => {
     expect(createDefaultSettings().hotkeys).toEqual({
-      answer: 'Alt+W',
-      capture: 'Alt+Q',
-      clear: 'Alt+R',
+      answer: 'MouseRightDoubleClick',
+      capture: 'MouseLeftDoubleClick',
+      clear: 'MouseMiddleDoubleClick',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
-      scrollDown: 'Shift+Down',
-      scrollUp: 'Shift+Up',
-      toggle: 'Alt+E'
+      scrollDown: 'MouseLeftHold+WheelDown',
+      scrollUp: 'MouseLeftHold+WheelUp',
+      toggle: 'MouseMiddleLongPress'
     })
     expect(createDefaultSettings().opacity).toBe(0.88)
   })

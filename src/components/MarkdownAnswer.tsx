@@ -16,7 +16,7 @@ export function MarkdownAnswer({ content, streaming = false }: MarkdownAnswerPro
     return (
       <div className="answer-empty">
         <strong>等待截图</strong>
-        <span>Alt+Q 捕获主屏幕，Alt+W 发送</span>
+        <span>左键双击截图，右键双击发送</span>
       </div>
     )
   }

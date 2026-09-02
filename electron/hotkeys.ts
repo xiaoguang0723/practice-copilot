@@ -25,7 +25,6 @@ const configurableActions: Array<[keyof HotkeySettings, HotkeyAction]> = [
   ['scrollDown', 'scroll-down']
 ]
 const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string]> = [
-  ['configuration-next', 'Alt+M'],
   ['move-up', 'Control+Up'],
   ['move-down', 'Control+Down'],
   ['move-left', 'Control+Left'],
@@ -52,6 +51,7 @@ function registerSet(
   for (const [action, accelerator] of fixedActions) {
     if (!registrar.register(accelerator, () => onAction(action))) return accelerator
   }
+  mouse?.register('MouseLeftRightChord', () => onAction('configuration-next'))
   return undefined
 }
 

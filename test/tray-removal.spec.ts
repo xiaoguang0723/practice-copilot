@@ -27,7 +27,7 @@ describe('tray removal', () => {
     const readme = readProjectFile('README.md')
 
     expect(readme).toContain('关闭悬浮窗只会隐藏窗口，应用会继续在后台运行。')
-    expect(readme).toContain('使用 `Alt+E` 重新显示窗口，使用 `Alt+X` 退出应用。')
+    expect(readme).toContain('中键长按 1 秒重新显示窗口，使用 `Alt+X` 退出应用。')
     expect(readme).not.toContain('隐藏到系统托盘')
   })
 })

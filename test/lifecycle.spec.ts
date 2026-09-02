@@ -52,7 +52,7 @@ describe('AppCoordinator', () => {
       model: 'vision',
        persistentPrompt: '',
        userText: ''
-    })).toThrow('请输入问题或先按 Alt+Q 捕获屏幕')
+    })).toThrow('请输入问题或先双击左键捕获屏幕')
   })
 
   it('cancels the previous answer when a new answer starts', async () => {

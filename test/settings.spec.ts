@@ -66,14 +66,14 @@ describe('SettingsStore', () => {
     expect(reloaded.getPublic().apiProtocol).toBe('response')
     expect(reloaded.getPublic().baseUrl).toBe('https://example.com/v1')
     expect(reloaded.getPublic().hotkeys).toEqual({
-      answer: 'Alt+W',
+      answer: 'MouseRightDoubleClick',
       capture: 'Ctrl+Q',
-      clear: 'Alt+R',
+      clear: 'MouseMiddleDoubleClick',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
-      scrollDown: 'Shift+Down',
-      scrollUp: 'Shift+Up',
-      toggle: 'Alt+E'
+      scrollDown: 'MouseLeftHold+WheelDown',
+      scrollUp: 'MouseLeftHold+WheelUp',
+      toggle: 'MouseMiddleLongPress'
     })
     expect(reloaded.getPublic().opacity).toBe(0.65)
   })
@@ -141,6 +141,73 @@ describe('SettingsStore', () => {
       })
     ])
     expect(store.getApiKey()).toBe('legacy-key')
+  })
+
+  it('migrates old built-in hotkeys while preserving customized hotkeys', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'practice-copilot-'))
+    directories.push(directory)
+    const filePath = join(directory, 'settings.json')
+    writeFileSync(filePath, JSON.stringify({
+      hotkeys: {
+        answer: 'Alt+W',
+        capture: 'Ctrl+Q',
+        clear: 'Alt+R',
+        pointerThrough: 'Alt+D',
+        quit: 'Alt+X',
+        scrollDown: 'Shift+Down',
+        scrollUp: 'Shift+Up',
+        toggle: 'Alt+E'
+      },
+      version: 2,
+      apiConfigurations: [{ id: 'one', name: '主线路', apiProtocol: 'chat', baseUrl: 'https://example.com/v1', model: 'model' }],
+      activeApiConfigurationId: 'one'
+    }), 'utf8')
+
+    const { store } = createStoreFrom(filePath)
+    expect(store.getPublic().hotkeys).toEqual({
+      answer: 'MouseRightDoubleClick',
+      capture: 'Ctrl+Q',
+      clear: 'MouseMiddleDoubleClick',
+      pointerThrough: 'Alt+D',
+      quit: 'Alt+X',
+      scrollDown: 'MouseLeftHold+WheelDown',
+      scrollUp: 'MouseLeftHold+WheelUp',
+      toggle: 'MouseMiddleLongPress'
+    })
+  })
+
+  it('migrates legacy single-profile hotkeys to the new mouse defaults', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'practice-copilot-'))
+    directories.push(directory)
+    const filePath = join(directory, 'settings.json')
+    writeFileSync(filePath, JSON.stringify({
+      answer: 'Alt+W',
+      capture: 'Alt+Q',
+      clear: 'Alt+R',
+      hotkeys: {
+        answer: 'Alt+W',
+        capture: 'Alt+Q',
+        clear: 'Alt+R',
+        pointerThrough: 'Alt+D',
+        quit: 'Alt+X',
+        scrollDown: 'Shift+Down',
+        scrollUp: 'Shift+Up',
+        toggle: 'Alt+E'
+      },
+      version: 1
+    }), 'utf8')
+
+    const { store } = createStoreFrom(filePath)
+    expect(store.getPublic().hotkeys.capture).toBe('MouseLeftDoubleClick')
+    expect(store.getPublic().hotkeys.toggle).toBe('MouseMiddleLongPress')
+  })
+
+  it('preserves a user choice that matches a legacy default after migration', () => {
+    const { filePath, store } = createStore()
+    store.applyPatch({ hotkeys: { answer: 'Alt+W' } })
+
+    const reloaded = new SettingsStore(filePath, testCipher())
+    expect(reloaded.getPublic().hotkeys.answer).toBe('Alt+W')
   })
 
   it('creates, reorders, activates, and persists named API configurations', () => {
