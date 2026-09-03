@@ -22,7 +22,8 @@ const orderedActions: Array<Extract<ShortcutAction, keyof HotkeySettings>> = [
 const configurableActions: Array<[keyof HotkeySettings, HotkeyAction]> = [
   ['pointerThrough', 'pointer-through'],
   ['scrollUp', 'scroll-up'],
-  ['scrollDown', 'scroll-down']
+  ['scrollDown', 'scroll-down'],
+  ['ghostMode', 'ghost-mode']
 ]
 const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string]> = [
   ['move-up', 'Control+Up'],

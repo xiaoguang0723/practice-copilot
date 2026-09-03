@@ -7,6 +7,7 @@ const oldHotkeys: HotkeySettings = {
   answer: 'MouseRightDoubleClick',
   capture: 'MouseLeftDoubleClick',
   clear: 'MouseMiddleDoubleClick',
+  ghostMode: 'Alt+M',
   pointerThrough: 'Alt+D',
   quit: 'Alt+X',
   scrollDown: 'MouseLeftHold+WheelDown',
@@ -29,6 +30,7 @@ describe('registerHotkeys', () => {
     expect(registered).toEqual([
       'Alt+X',
       'Alt+D',
+      'Alt+M',
       'Control+Up',
       'Control+Down',
       'Control+Left',
@@ -55,6 +57,7 @@ describe('registerHotkeys', () => {
     expect(rounds.at(-1)).toEqual([
       'Alt+X',
       'Alt+D',
+      'Alt+M',
       'Control+Up',
       'Control+Down',
       'Control+Left',

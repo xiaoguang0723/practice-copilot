@@ -181,4 +181,62 @@ describe('App hotkey scrolling', () => {
     expect(scrollBy).toHaveBeenNthCalledWith(1, { behavior: 'smooth', top: 180 })
     expect(scrollBy).toHaveBeenNthCalledWith(2, { behavior: 'smooth', top: -180 })
   })
+
+  it('toggles ghost mode and resets it on pointer-through change', async () => {
+    let onHotkey: ((action: HotkeyAction) => void) | undefined
+    const settings = createDefaultSettings()
+    const api: PracticeApi = {
+      answer: {
+        cancel: vi.fn(),
+        onEvent: vi.fn(() => () => undefined),
+        start: vi.fn()
+      },
+      app: { quit: vi.fn() },
+      capture: { primary: vi.fn() },
+      conversation: { clear: vi.fn() },
+      hotkeys: {
+        onAction: vi.fn((callback) => {
+          onHotkey = callback
+          return () => undefined
+        })
+      },
+      knowledge: {
+        create: vi.fn(),
+        delete: vi.fn(),
+        deleteDocument: vi.fn(),
+        importDocument: vi.fn(),
+        list: vi.fn(async () => []),
+        listDocuments: vi.fn(async () => []),
+        rename: vi.fn(),
+        updateDocument: vi.fn()
+      },
+      settings: {
+        activateApiConfiguration: vi.fn(async () => settings),
+        clearApiKey: vi.fn(async () => settings),
+        copyApiKey: vi.fn(),
+        createApiConfiguration: vi.fn(async () => settings),
+        deleteApiConfiguration: vi.fn(async () => settings),
+        get: vi.fn(async () => settings),
+        moveApiConfiguration: vi.fn(async () => settings),
+        onChange: vi.fn(() => () => undefined),
+        save: vi.fn(async () => settings)
+      },
+      window: { hide: vi.fn(), setOpacity: vi.fn(), toggle: vi.fn() }
+    }
+    Object.defineProperty(window, 'practice', { configurable: true, value: api })
+
+    const { container } = render(<App />)
+    const shell = container.querySelector('.app-shell')!
+    await waitFor(() => expect(onHotkey).toBeTypeOf('function'))
+
+    expect(shell).not.toHaveClass('ghost-mode')
+
+    // Toggling ghost-mode adds class
+    onHotkey?.('ghost-mode')
+    await waitFor(() => expect(shell).toHaveClass('ghost-mode'))
+
+    // Toggling pointer-through resets ghost mode
+    onHotkey?.('pointer-through')
+    await waitFor(() => expect(shell).not.toHaveClass('ghost-mode'))
+  })
 })

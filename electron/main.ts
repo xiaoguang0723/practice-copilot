@@ -49,6 +49,7 @@ async function bootstrap(): Promise<void> {
   const knowledge = new KnowledgeBaseStore(join(app.getPath('userData'), 'knowledge-base'))
   let quitting = false
   let pointerThrough = false
+  let ghostMode = false
   const mouseHotkeys = new MouseHotkeyManager()
 
   const primaryWorkArea = screen.getPrimaryDisplay().workArea
@@ -60,8 +61,8 @@ async function bootstrap(): Promise<void> {
     frame: false,
     focusable: false,
     hasShadow: false,
-    minHeight: 440,
-    minWidth: 380,
+    minHeight: 40,
+    minWidth: 80,
     resizable: true,
     show: false,
     skipTaskbar: true,
@@ -160,7 +161,16 @@ async function bootstrap(): Promise<void> {
     else if (action === 'pointer-through') {
       pointerThrough = !pointerThrough
       setPointerThrough(window, pointerThrough)
+      if (!pointerThrough && ghostMode) {
+        ghostMode = false
+      }
       window.webContents.send(IPC.HOTKEY_ACTION, action)
+    }
+    else if (action === 'ghost-mode') {
+      if (pointerThrough) {
+        ghostMode = !ghostMode
+        window.webContents.send(IPC.HOTKEY_ACTION, action)
+      }
     }
     else if (
       action === 'move-up' ||

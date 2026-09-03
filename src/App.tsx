@@ -17,6 +17,7 @@ export function App() {
   const [settings, setSettings] = useState<PublicSettings>()
   const [showKnowledge, setShowKnowledge] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [isGhostMode, setIsGhostMode] = useState(false)
   const [message, setMessage] = useState('')
   const answerRegionRef = useRef<HTMLElement>(null)
   const messageRef = useRef(message)
@@ -70,6 +71,8 @@ export function App() {
       if (action === 'answer') void answer()
       if (action === 'clear') void clearConversation()
       if (action === 'settings') setShowSettings(true)
+      if (action === 'ghost-mode') setIsGhostMode((prev) => !prev)
+      if (action === 'pointer-through') setIsGhostMode(false)
       if (action === 'scroll-down' || action === 'scroll-up') {
         answerRegionRef.current?.scrollBy({
           behavior: 'smooth',
@@ -104,7 +107,7 @@ export function App() {
     : undefined
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${isGhostMode ? 'ghost-mode' : ''}`}>
       <header className="titlebar">
         <div className="brand-mark">P</div>
         <div className="brand-copy">
@@ -136,12 +139,12 @@ export function App() {
 
       <section aria-label="模型回答" className="answer-region" ref={answerRegionRef}>
         {state.turns.length === 0 ? (
-          <MarkdownAnswer content="" />
+          isGhostMode ? null : <MarkdownAnswer content="" />
         ) : (
           <div className="conversation-transcript">
             {state.turns.map((turn) => (
               <div className="conversation-turn" key={turn.id}>
-                <div className="user-message">{turn.userText || '请分析当前截图。'}</div>
+                {!isGhostMode && <div className="user-message">{turn.userText || '请分析当前截图。'}</div>}
                 <MarkdownAnswer content={turn.assistantText} streaming={turn.status === 'streaming'} />
               </div>
             ))}

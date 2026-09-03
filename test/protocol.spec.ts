@@ -8,6 +8,7 @@ describe('createDefaultSettings', () => {
       answer: 'MouseRightDoubleClick',
       capture: 'MouseLeftDoubleClick',
       clear: 'MouseMiddleDoubleClick',
+      ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
       scrollDown: 'MouseLeftHold+WheelDown',

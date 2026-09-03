@@ -205,6 +205,7 @@ export function SettingsPanel({
               ['clear', '清空截图'],
               ['toggle', '显示 / 隐藏'],
               ['pointerThrough', '鼠标穿透'],
+              ['ghostMode', '纯文字悬浮 (穿透模式生效)'],
               ['scrollUp', '向上滚动回答'],
               ['scrollDown', '向下滚动回答'],
               ['quit', '退出']

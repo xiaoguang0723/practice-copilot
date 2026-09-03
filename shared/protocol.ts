@@ -2,6 +2,7 @@ export interface HotkeySettings {
   answer: string
   capture: string
   clear: string
+  ghostMode: string
   pointerThrough: string
   quit: string
   scrollDown: string
@@ -64,6 +65,7 @@ export type HotkeyAction =
   | 'capture'
   | 'clear'
   | 'configuration-next'
+  | 'ghost-mode'
   | 'move-down'
   | 'move-left'
   | 'move-right'
@@ -167,6 +169,7 @@ export function createDefaultSettings(): PublicSettings {
       answer: 'MouseRightDoubleClick',
       capture: 'MouseLeftDoubleClick',
       clear: 'MouseMiddleDoubleClick',
+      ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
       scrollDown: 'MouseLeftHold+WheelDown',
