@@ -7,6 +7,7 @@ import {
   type ApiConfiguration,
   type HotkeySettings,
   type PublicSettings,
+  type RemoteCompanionSettings,
   type SettingsPatch
 } from '../shared/protocol'
 import { normalizeBaseUrl, validateSettingsPatch } from '../shared/validation'
@@ -46,6 +47,7 @@ interface SettingsFile {
   knowledgeBaseEnabled: boolean
   opacity: number
   persistentPrompt: string
+  remoteCompanion: RemoteCompanionSettings
   selectedKnowledgeBaseIds: string[]
   version: 3
 }
@@ -66,6 +68,10 @@ function defaultFile(): SettingsFile {
     knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
     opacity: defaults.opacity,
     persistentPrompt: defaults.persistentPrompt,
+    remoteCompanion: {
+      ...defaults.remoteCompanion,
+      token: randomUUID().replace(/-/g, '')
+    },
     selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
     version: 3
   }
@@ -94,6 +100,7 @@ export class SettingsStore {
       model: active.model,
       opacity: this.data.opacity,
       persistentPrompt: this.data.persistentPrompt,
+      remoteCompanion: { ...this.data.remoteCompanion },
       selectedKnowledgeBaseIds: [...this.data.selectedKnowledgeBaseIds]
     }
   }
@@ -123,6 +130,15 @@ export class SettingsStore {
     if (patch.knowledgeBaseEnabled !== undefined) this.data.knowledgeBaseEnabled = patch.knowledgeBaseEnabled
     if (patch.selectedKnowledgeBaseIds !== undefined) {
       this.data.selectedKnowledgeBaseIds = [...new Set(patch.selectedKnowledgeBaseIds)]
+    }
+    if (patch.remoteCompanion !== undefined) {
+      this.data.remoteCompanion = {
+        ...this.data.remoteCompanion,
+        ...patch.remoteCompanion
+      }
+      if (!this.data.remoteCompanion.token) {
+        this.data.remoteCompanion.token = randomUUID().replace(/-/g, '')
+      }
     }
     if (patch.apiKey !== undefined && patch.apiKey !== '') {
       if (!this.cipher.available()) throw new Error('系统安全存储不可用，无法保存 API Key')
@@ -263,6 +279,17 @@ export class SettingsStore {
       knowledgeBaseEnabled: typeof raw.knowledgeBaseEnabled === 'boolean' ? raw.knowledgeBaseEnabled : defaults.knowledgeBaseEnabled,
       opacity: typeof raw.opacity === 'number' && raw.opacity >= 0.35 && raw.opacity <= 0.95 ? raw.opacity : defaults.opacity,
       persistentPrompt: typeof raw.persistentPrompt === 'string' ? raw.persistentPrompt : defaults.persistentPrompt,
+      remoteCompanion: {
+        enabled: typeof raw.remoteCompanion?.enabled === 'boolean' ? raw.remoteCompanion.enabled : defaults.remoteCompanion.enabled,
+        ip: typeof raw.remoteCompanion?.ip === 'string' ? raw.remoteCompanion.ip : defaults.remoteCompanion.ip,
+        outputTarget: raw.remoteCompanion?.outputTarget === 'remote-only' ? 'remote-only' : 'both',
+        port: typeof raw.remoteCompanion?.port === 'number' && raw.remoteCompanion.port > 1024 && raw.remoteCompanion.port < 65535
+          ? raw.remoteCompanion.port
+          : defaults.remoteCompanion.port,
+        token: typeof raw.remoteCompanion?.token === 'string' && raw.remoteCompanion.token
+          ? raw.remoteCompanion.token
+          : defaults.remoteCompanion.token
+      },
       selectedKnowledgeBaseIds: Array.isArray(raw.selectedKnowledgeBaseIds)
         ? raw.selectedKnowledgeBaseIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
         : defaults.selectedKnowledgeBaseIds,

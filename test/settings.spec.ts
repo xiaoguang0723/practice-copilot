@@ -72,6 +72,7 @@ describe('SettingsStore', () => {
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
+      remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
       scrollUp: 'MouseLeftHold+WheelUp',
       toggle: 'MouseMiddleLongPress'
@@ -172,6 +173,7 @@ describe('SettingsStore', () => {
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
+      remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
       scrollUp: 'MouseLeftHold+WheelUp',
       toggle: 'MouseMiddleLongPress'

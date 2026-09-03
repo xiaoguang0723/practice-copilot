@@ -45,6 +45,9 @@ const api: PracticeApi = {
     rename: (id, name) => ipcRenderer.invoke(IPC.KNOWLEDGE_RENAME, id, name),
     updateDocument: (id, content) => ipcRenderer.invoke(IPC.KNOWLEDGE_DOCUMENT_UPDATE, id, content)
   },
+  remote: {
+    getStatus: () => ipcRenderer.invoke(IPC.REMOTE_STATUS)
+  },
   settings: {
     activateApiConfiguration: (id) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_ACTIVATE, id),
     clearApiKey: () => ipcRenderer.invoke(IPC.SETTINGS_CLEAR_API_KEY),

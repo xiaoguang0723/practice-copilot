@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { createDefaultSettings, type PublicSettings, type SettingsPatch } from '../../shared/protocol'
 import { validateSettingsPatch } from '../../shared/validation'
@@ -37,9 +37,21 @@ export function SettingsPanel({
   const [opacity, setOpacity] = useState(settings.opacity)
   const [persistentPrompt, setPersistentPrompt] = useState(settings.persistentPrompt)
   const [hotkeys, setHotkeys] = useState({ ...settings.hotkeys })
+  const [remoteEnabled, setRemoteEnabled] = useState(settings.remoteCompanion?.enabled ?? false)
+  const [remoteIp, setRemoteIp] = useState(settings.remoteCompanion?.ip)
+  const [remoteOutputTarget, setRemoteOutputTarget] = useState<'both' | 'remote-only'>(settings.remoteCompanion?.outputTarget ?? 'both')
+  const [remoteStatus, setRemoteStatus] = useState<{ active: boolean; availableIps?: Array<{ address: string; name: string }>; clientCount: number; ip: string; port: number; qrDataUrl: string; url: string }>()
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
   const [recordingKey, setRecordingKey] = useState<string>()
+
+  useEffect(() => {
+    if (window.practice?.remote?.getStatus) {
+      void window.practice.remote.getStatus().then((status) => {
+        setRemoteStatus(status)
+      })
+    }
+  }, [remoteEnabled, remoteIp])
 
   const cancel = () => {
     onOpacityPreview?.(settings.opacity)
@@ -65,7 +77,12 @@ export function SettingsPanel({
       hotkeys,
       model,
       opacity,
-      persistentPrompt
+      persistentPrompt,
+      remoteCompanion: {
+        enabled: remoteEnabled,
+        ip: remoteIp,
+        outputTarget: remoteOutputTarget
+      }
     }
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) {
@@ -197,6 +214,84 @@ export function SettingsPanel({
           <textarea maxLength={8000} placeholder="例如：重点覆盖数据结构与算法，优先使用 JavaScript。" rows={4} value={persistentPrompt} onChange={(event) => setPersistentPrompt(event.target.value)} />
         </label>
 
+        <div className="remote-companion-card">
+          <div className="remote-companion-header">
+            <div>
+              <div className="remote-card-title">局域网远端副屏（免装 App）</div>
+              <div className="remote-card-subtitle">手机扫码实时打字机接收回答，支持双端同步或主屏静默无痕</div>
+            </div>
+            <label className="remote-toggle-label">
+              <input
+                type="checkbox"
+                checked={remoteEnabled}
+                onChange={(e) => setRemoteEnabled(e.target.checked)}
+              />
+              <span>{remoteEnabled ? '已启用' : '已关闭'}</span>
+            </label>
+          </div>
+
+          {remoteEnabled && (
+            <div className="remote-companion-body">
+              <div className="remote-target-row">
+                <span>输出目标：</span>
+                <label>
+                  <input
+                    type="radio"
+                    name="outputTarget"
+                    value="both"
+                    checked={remoteOutputTarget === 'both'}
+                    onChange={() => setRemoteOutputTarget('both')}
+                  />
+                  双端同步显示
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="outputTarget"
+                    value="remote-only"
+                    checked={remoteOutputTarget === 'remote-only'}
+                    onChange={() => setRemoteOutputTarget('remote-only')}
+                  />
+                  仅远端显示（主屏静默无痕）
+                </label>
+              </div>
+
+              {remoteStatus?.availableIps && remoteStatus.availableIps.length > 1 && (
+                <div className="remote-target-row">
+                  <span>电脑网络：</span>
+                  <select
+                    value={remoteIp || remoteStatus.ip}
+                    onChange={(e) => setRemoteIp(e.target.value)}
+                    style={{ flex: 1, padding: '3px 6px', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '4px', color: '#e2e8f0', fontSize: '11px' }}
+                  >
+                    {remoteStatus.availableIps.map((cand) => (
+                      <option key={cand.address} value={cand.address}>
+                        {cand.name} ({cand.address})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {remoteStatus?.qrDataUrl ? (
+                <div className="remote-qr-section">
+                  <img src={remoteStatus.qrDataUrl} alt="扫码连接远端副屏" className="remote-qr-image" />
+                  <div className="remote-qr-info">
+                    <span className="remote-connection-badge">
+                      {remoteStatus.clientCount > 0 ? `● 已连接 ${remoteStatus.clientCount} 台设备` : '○ 等待设备扫码连接'}
+                    </span>
+                    <span className="remote-url-text">{remoteStatus.url}</span>
+                    <span className="remote-hint-text">① 手机与电脑需连接同一 Wi-Fi 或热点</span>
+                    <span className="remote-hint-text" style={{ color: '#93c5fd' }}>② 推荐使用手机【自带相机】或【自带浏览器】扫码打开（避免微信内置拦截）</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="remote-hint-text">保存设置后将启动局域网服务并生成二维码</div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="hotkey-grid">
           {(
             [
@@ -206,6 +301,7 @@ export function SettingsPanel({
               ['toggle', '显示 / 隐藏'],
               ['pointerThrough', '鼠标穿透'],
               ['ghostMode', '纯文字悬浮 (穿透模式生效)'],
+              ['remoteOutputToggle', '切换远端输出模式'],
               ['scrollUp', '向上滚动回答'],
               ['scrollDown', '向下滚动回答'],
               ['quit', '退出']

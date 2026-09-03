@@ -10,6 +10,7 @@ const oldHotkeys: HotkeySettings = {
   ghostMode: 'Alt+M',
   pointerThrough: 'Alt+D',
   quit: 'Alt+X',
+  remoteOutputToggle: 'Alt+R',
   scrollDown: 'MouseLeftHold+WheelDown',
   scrollUp: 'MouseLeftHold+WheelUp',
   toggle: 'MouseMiddleLongPress'
@@ -31,6 +32,7 @@ describe('registerHotkeys', () => {
       'Alt+X',
       'Alt+D',
       'Alt+M',
+      'Alt+R',
       'Control+Up',
       'Control+Down',
       'Control+Left',
@@ -58,6 +60,7 @@ describe('registerHotkeys', () => {
       'Alt+X',
       'Alt+D',
       'Alt+M',
+      'Alt+R',
       'Control+Up',
       'Control+Down',
       'Control+Left',

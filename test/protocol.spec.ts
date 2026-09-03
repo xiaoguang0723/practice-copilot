@@ -11,6 +11,7 @@ describe('createDefaultSettings', () => {
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
+      remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
       scrollUp: 'MouseLeftHold+WheelUp',
       toggle: 'MouseMiddleLongPress'

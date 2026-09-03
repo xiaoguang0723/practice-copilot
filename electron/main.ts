@@ -19,6 +19,7 @@ import { registerHotkeys } from './hotkeys'
 import { streamVisionAnswer } from './llm/client'
 import { extractVisionSearchQuery } from './llm/client'
 import { KnowledgeBaseStore } from './knowledge-base'
+import { RemoteCompanionServer } from './remote-server'
 import { SettingsStore, type SecretCipher } from './settings'
 import { setPointerThrough, showWithoutActivation } from './window-interaction'
 import { MouseHotkeyManager } from './mouse-hotkeys'
@@ -47,10 +48,20 @@ async function bootstrap(): Promise<void> {
   }
   const settings = new SettingsStore(settingsFile, cipher)
   const knowledge = new KnowledgeBaseStore(join(app.getPath('userData'), 'knowledge-base'))
+  const remoteServer = new RemoteCompanionServer()
   let quitting = false
   let pointerThrough = false
   let ghostMode = false
   const mouseHotkeys = new MouseHotkeyManager()
+
+  if (settings.getPublic().remoteCompanion.enabled) {
+    void remoteServer.start(
+      settings.getPublic().remoteCompanion.port,
+      settings.getPublic().remoteCompanion.token,
+      settings.getPublic().remoteCompanion.outputTarget,
+      settings.getPublic().remoteCompanion.ip
+    ).catch(console.error)
+  }
 
   const primaryWorkArea = screen.getPrimaryDisplay().workArea
   const initialBounds = loadBounds(boundsFile, primaryWorkArea)
@@ -117,8 +128,15 @@ async function bootstrap(): Promise<void> {
 
   const coordinator = new AppCoordinator({
     capture: capturePrimaryDisplay,
-    emitAnswer: (event) => window.webContents.send(IPC.ANSWER_EVENT, event),
+    emitAnswer: (event) => {
+      const current = settings.getPublic()
+      if (!current.remoteCompanion.enabled || current.remoteCompanion.outputTarget !== 'remote-only') {
+        window.webContents.send(IPC.ANSWER_EVENT, event)
+      }
+      remoteServer.broadcast(event.type, event)
+    },
     quit: () => {
+      remoteServer.stop()
       knowledge.close()
       quitting = true
       app.quit()
@@ -171,6 +189,28 @@ async function bootstrap(): Promise<void> {
         ghostMode = !ghostMode
         window.webContents.send(IPC.HOTKEY_ACTION, action)
       }
+    }
+    else if (action === 'remote-output-toggle') {
+      const current = settings.getPublic()
+      const nextTarget = current.remoteCompanion.outputTarget === 'remote-only' ? 'both' : 'remote-only'
+      remoteServer.setOutputTarget(nextTarget)
+      const updated = settings.applyPatch({
+        remoteCompanion: { outputTarget: nextTarget }
+      })
+      if (nextTarget === 'remote-only') {
+        hideWindow()
+      } else {
+        showWithoutActivation(window, !pointerThrough)
+      }
+      publishSettings(updated)
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+    }
+    else if (action === 'scroll-up' || action === 'scroll-down') {
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+      remoteServer.broadcast('scroll', {
+        direction: action === 'scroll-up' ? 'up' : 'down',
+        delta: action === 'scroll-up' ? -260 : 260
+      })
     }
     else if (
       action === 'move-up' ||
@@ -228,6 +268,7 @@ async function bootstrap(): Promise<void> {
     if (!apiKey) throw new Error('当前配置没有已保存的 API Key')
     clipboard.writeText(apiKey)
   })
+  ipcMain.handle(IPC.REMOTE_STATUS, () => remoteServer.getStatus())
   ipcMain.handle(IPC.SETTINGS_SAVE, (_event, patch: SettingsPatch) => {
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) throw new Error(validation.message)
@@ -240,6 +281,18 @@ async function bootstrap(): Promise<void> {
     try {
       const saved = settings.applyPatch(patch)
       if (patch.opacity !== undefined) window.setOpacity(saved.opacity)
+      if (patch.remoteCompanion !== undefined) {
+        if (saved.remoteCompanion.enabled) {
+          void remoteServer.start(
+            saved.remoteCompanion.port,
+            saved.remoteCompanion.token,
+            saved.remoteCompanion.outputTarget,
+            saved.remoteCompanion.ip
+          ).catch(console.error)
+        } else {
+          remoteServer.stop()
+        }
+      }
       return saved
     } catch (error) {
       if (patch.hotkeys) registerHotkeys(globalShortcut, previous, previous, handleAction, mouseHotkeys)
@@ -254,7 +307,7 @@ async function bootstrap(): Promise<void> {
     const current = settings.getPublic()
     const apiKey = settings.getApiKey()
     if (!apiKey) throw new Error('请先在设置中保存 API Key')
-    return coordinator.startAnswer({
+    const result = coordinator.startAnswer({
       apiKey,
       apiProtocol: current.apiProtocol,
       baseUrl: current.baseUrl,
@@ -264,9 +317,17 @@ async function bootstrap(): Promise<void> {
       persistentPrompt: current.persistentPrompt,
       selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
+    remoteServer.broadcast('turn-start', {
+      turnId: result.turnId,
+      userText: input.text
+    })
+    return result
   })
   ipcMain.handle(IPC.HOTKEY_RECORD, () => mouseHotkeys.record())
-  ipcMain.handle(IPC.CONVERSATION_CLEAR, () => coordinator.clearConversation())
+  ipcMain.handle(IPC.CONVERSATION_CLEAR, () => {
+    coordinator.clearConversation()
+    remoteServer.broadcast('clear', {})
+  })
   ipcMain.handle(IPC.ANSWER_CANCEL, (_event, requestId: unknown) => {
     if (typeof requestId === 'string') coordinator.cancelAnswer(requestId)
   })
@@ -284,6 +345,7 @@ async function bootstrap(): Promise<void> {
     showWithoutActivation(window, !pointerThrough)
   })
   app.on('before-quit', (event) => {
+    remoteServer.stop()
     if (!quitting) {
       event.preventDefault()
       coordinator.shutdown()

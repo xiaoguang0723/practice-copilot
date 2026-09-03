@@ -22,6 +22,8 @@ export function App() {
   const answerRegionRef = useRef<HTMLElement>(null)
   const messageRef = useRef(message)
   messageRef.current = message
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
 
   const capture = useCallback(async () => {
     try {
@@ -33,8 +35,14 @@ export function App() {
 
   const answer = useCallback(async () => {
     try {
+      const isRemoteOnly = Boolean(
+        settingsRef.current?.remoteCompanion?.enabled &&
+        settingsRef.current?.remoteCompanion?.outputTarget === 'remote-only'
+      )
       const { requestId, turnId } = await window.practice.answer.start({ text: messageRef.current })
-      dispatch({ requestId, turnId, type: 'turn-start', userText: messageRef.current })
+      if (!isRemoteOnly) {
+        dispatch({ requestId, turnId, type: 'turn-start', userText: messageRef.current })
+      }
       setMessage('')
       dispatch({ type: 'capture-clear' })
     } catch (error) {
@@ -58,6 +66,12 @@ export function App() {
       if (!loaded.apiKeySet) setShowSettings(true)
     })
     const removeAnswerListener = window.practice.answer.onEvent((event) => {
+      const isRemoteOnly = Boolean(
+        settingsRef.current?.remoteCompanion?.enabled &&
+        settingsRef.current?.remoteCompanion?.outputTarget === 'remote-only'
+      )
+      if (isRemoteOnly) return
+
       if (event.type === 'delta') {
         dispatch({ delta: event.delta, requestId: event.requestId, turnId: event.turnId, type: 'stream-delta' })
       } else if (event.type === 'done') {
@@ -138,7 +152,14 @@ export function App() {
       )}
 
       <section aria-label="模型回答" className="answer-region" ref={answerRegionRef}>
-        {state.turns.length === 0 ? (
+        {Boolean(settings?.remoteCompanion?.enabled && settings?.remoteCompanion?.outputTarget === 'remote-only') ? (
+          isGhostMode ? null : (
+            <div className="answer-empty">
+              <span>已开启「仅远端副屏显示」</span>
+              <small>题目与回答仅在手机副屏实时流式呈现，桌面保持静默无痕</small>
+            </div>
+          )
+        ) : state.turns.length === 0 ? (
           isGhostMode ? null : <MarkdownAnswer content="" />
         ) : (
           <div className="conversation-transcript">

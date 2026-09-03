@@ -832,3 +832,121 @@ button {
      1px  1px 0 rgba(0, 0, 0, 0.95),
      0    0   5px rgba(0, 0, 0, 0.8) !important;
 }
+
+/* 局域网远端副屏样式 */
+.remote-companion-card {
+  padding: 10px 12px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.remote-companion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.remote-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.remote-card-subtitle {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+.remote-toggle-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #93c5fd;
+  cursor: pointer;
+}
+
+.remote-toggle-label input {
+  width: auto !important;
+  cursor: pointer;
+}
+
+.remote-companion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.15);
+}
+
+.remote-target-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.remote-target-row label {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.remote-target-row input {
+  width: auto !important;
+}
+
+.remote-qr-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.remote-qr-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 3px;
+}
+
+.remote-qr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.remote-connection-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4ade80;
+}
+
+.remote-url-text {
+  font-size: 10px;
+  color: #93c5fd;
+  font-family: monospace;
+  word-break: break-all;
+  user-select: all;
+}
+
+.remote-hint-text {
+  font-size: 10px;
+  color: #64748b;
+}
+

@@ -5,9 +5,18 @@ export interface HotkeySettings {
   ghostMode: string
   pointerThrough: string
   quit: string
+  remoteOutputToggle: string
   scrollDown: string
   scrollUp: string
   toggle: string
+}
+
+export interface RemoteCompanionSettings {
+  enabled: boolean
+  ip?: string
+  outputTarget: 'both' | 'remote-only'
+  port: number
+  token: string
 }
 
 export interface ApiConfiguration {
@@ -30,6 +39,7 @@ export interface PublicSettings {
   model: string
   opacity: number
   persistentPrompt: string
+  remoteCompanion: RemoteCompanionSettings
   selectedKnowledgeBaseIds: string[]
 }
 
@@ -43,6 +53,7 @@ export interface SettingsPatch {
   model?: string
   opacity?: number
   persistentPrompt?: string
+  remoteCompanion?: Partial<RemoteCompanionSettings>
   selectedKnowledgeBaseIds?: string[]
 }
 
@@ -72,6 +83,7 @@ export type HotkeyAction =
   | 'move-up'
   | 'pointer-through'
   | 'quit'
+  | 'remote-output-toggle'
   | 'scroll-down'
   | 'scroll-up'
   | 'settings'
@@ -89,6 +101,7 @@ export const IPC = {
   KNOWLEDGE_CREATE: 'knowledge:create', KNOWLEDGE_DELETE: 'knowledge:delete', KNOWLEDGE_DOCUMENT_DELETE: 'knowledge:document-delete',
   KNOWLEDGE_DOCUMENT_IMPORT: 'knowledge:document-import', KNOWLEDGE_DOCUMENT_LIST: 'knowledge:document-list', KNOWLEDGE_DOCUMENT_UPDATE: 'knowledge:document-update',
   KNOWLEDGE_LIST: 'knowledge:list', KNOWLEDGE_RENAME: 'knowledge:rename',
+  REMOTE_STATUS: 'remote:status',
   SETTINGS_CLEAR_API_KEY: 'settings:clear-api-key',
   SETTINGS_CONFIGURATION_ACTIVATE: 'settings:configuration-activate',
   SETTINGS_CONFIGURATION_CREATE: 'settings:configuration-create',
@@ -132,6 +145,17 @@ export interface PracticeApi {
     rename(id: string, name: string): Promise<KnowledgeBaseSummary>
     updateDocument(id: string, content: string): Promise<KnowledgeDocument>
   }
+  remote: {
+    getStatus(): Promise<{
+      active: boolean
+      clientCount: number
+      ip: string
+      outputTarget: 'both' | 'remote-only'
+      port: number
+      qrDataUrl: string
+      url: string
+    }>
+  }
   settings: {
     activateApiConfiguration(id: string): Promise<PublicSettings>
     clearApiKey(): Promise<PublicSettings>
@@ -172,6 +196,7 @@ export function createDefaultSettings(): PublicSettings {
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
       quit: 'Alt+X',
+      remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
       scrollUp: 'MouseLeftHold+WheelUp',
       toggle: 'MouseMiddleLongPress'
@@ -180,6 +205,12 @@ export function createDefaultSettings(): PublicSettings {
     model: 'gpt-4.1-mini',
     opacity: 0.88,
     persistentPrompt: '',
+    remoteCompanion: {
+      enabled: false,
+      outputTarget: 'both',
+      port: 5188,
+      token: ''
+    },
     selectedKnowledgeBaseIds: []
   }
 }
