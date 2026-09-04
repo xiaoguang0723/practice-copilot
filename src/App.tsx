@@ -24,6 +24,22 @@ export function App() {
   messageRef.current = message
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  const isNearBottomRef = useRef(true)
+
+  const handleScroll = useCallback(() => {
+    const el = answerRegionRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight)
+    isNearBottomRef.current = distFromBottom <= 120
+  }, [])
+
+  useEffect(() => {
+    const el = answerRegionRef.current
+    if (!el) return
+    if (isNearBottomRef.current) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [state.turns])
 
   const capture = useCallback(async () => {
     try {
@@ -41,6 +57,7 @@ export function App() {
       )
       const { requestId, turnId } = await window.practice.answer.start({ text: messageRef.current })
       if (!isRemoteOnly) {
+        isNearBottomRef.current = true
         dispatch({ requestId, turnId, type: 'turn-start', userText: messageRef.current })
       }
       setMessage('')
@@ -54,6 +71,7 @@ export function App() {
     try {
       await window.practice.conversation.clear()
       setMessage('')
+      isNearBottomRef.current = true
       dispatch({ type: 'conversation-clear' })
     } catch (error) {
       dispatch({ message: errorMessage(error), type: 'local-error' })
@@ -88,10 +106,18 @@ export function App() {
       if (action === 'ghost-mode') setIsGhostMode((prev) => !prev)
       if (action === 'pointer-through') setIsGhostMode(false)
       if (action === 'scroll-down' || action === 'scroll-up') {
-        answerRegionRef.current?.scrollBy({
+        const el = answerRegionRef.current
+        if (!el) return
+        el.scrollBy({
           behavior: 'smooth',
           top: action === 'scroll-down' ? ANSWER_SCROLL_STEP : -ANSWER_SCROLL_STEP
         })
+        setTimeout(() => {
+          if (el) {
+            const distFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight)
+            isNearBottomRef.current = distFromBottom <= 120
+          }
+        }, 200)
       }
     })
     const removeSettingsListener = window.practice.settings.onChange((nextSettings) => {
@@ -151,7 +177,7 @@ export function App() {
         </div>
       )}
 
-      <section aria-label="模型回答" className="answer-region" ref={answerRegionRef}>
+      <section aria-label="模型回答" className="answer-region" onScroll={handleScroll} ref={answerRegionRef}>
         {Boolean(settings?.remoteCompanion?.enabled && settings?.remoteCompanion?.outputTarget === 'remote-only') ? (
           isGhostMode ? null : (
             <div className="answer-empty">
