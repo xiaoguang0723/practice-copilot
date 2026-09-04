@@ -110,6 +110,28 @@ describe('SettingsPanel', () => {
     await waitFor(() => expect(onCreateApiConfiguration).toHaveBeenCalledWith('面试线路'))
   })
 
+  it('shows prompt templates and activates the selected template', async () => {
+    const settings = createDefaultSettings()
+    settings.promptTemplates = [
+      settings.promptTemplates[0],
+      { content: '请用 JavaScript 解答。', id: 'js', name: 'JavaScript 模板' }
+    ]
+    const onActivatePromptTemplate = vi.fn()
+
+    render(
+      <SettingsPanel
+        onActivatePromptTemplate={onActivatePromptTemplate}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        settings={settings}
+      />
+    )
+
+    expect(screen.getByText('JavaScript 模板')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '使用提示词 JavaScript 模板' }))
+    await waitFor(() => expect(onActivatePromptTemplate).toHaveBeenCalledWith('js'))
+  })
+
   it('restores the default hotkeys in the form without saving immediately', async () => {
     const settings = createDefaultSettings()
     settings.hotkeys.capture = 'Control+Q'
@@ -170,6 +192,7 @@ describe('App hotkey scrolling', () => {
     Object.defineProperty(window, 'practice', { configurable: true, value: api })
 
     render(<App />)
+    expect(await screen.findByText('提示词：默认提示词')).toBeInTheDocument()
     const answerRegion = screen.getByRole('region', { name: '模型回答' })
     const scrollBy = vi.fn()
     Object.defineProperty(answerRegion, 'scrollBy', { configurable: true, value: scrollBy })

@@ -11,6 +11,10 @@ export interface SettingsPanelProps {
   onCreateApiConfiguration?(name: string): Promise<void> | void
   onDeleteApiConfiguration?(id: string): Promise<void> | void
   onMoveApiConfiguration?(id: string, direction: 'up' | 'down'): Promise<void> | void
+  onActivatePromptTemplate?(id: string): Promise<void> | void
+  onCreatePromptTemplate?(name: string): Promise<void> | void
+  onDeletePromptTemplate?(id: string): Promise<void> | void
+  onMovePromptTemplate?(id: string, direction: 'up' | 'down'): Promise<void> | void
   onOpacityPreview?(opacity: number): void
   onSave(patch: SettingsPatch): Promise<void> | void
   settings: PublicSettings
@@ -24,6 +28,10 @@ export function SettingsPanel({
   onCreateApiConfiguration,
   onDeleteApiConfiguration,
   onMoveApiConfiguration,
+  onActivatePromptTemplate,
+  onCreatePromptTemplate,
+  onDeletePromptTemplate,
+  onMovePromptTemplate,
   onOpacityPreview,
   onSave,
   settings
@@ -34,7 +42,9 @@ export function SettingsPanel({
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(settings.model)
   const [newConfigurationName, setNewConfigurationName] = useState('')
+  const [newPromptTemplateName, setNewPromptTemplateName] = useState('')
   const [opacity, setOpacity] = useState(settings.opacity)
+  const [promptTemplateName, setPromptTemplateName] = useState(activePromptTemplate(settings).name)
   const [persistentPrompt, setPersistentPrompt] = useState(settings.persistentPrompt)
   const [hotkeys, setHotkeys] = useState({ ...settings.hotkeys })
   const [remoteEnabled, setRemoteEnabled] = useState(settings.remoteCompanion?.enabled ?? false)
@@ -77,6 +87,7 @@ export function SettingsPanel({
       hotkeys,
       model,
       opacity,
+      promptTemplateName,
       persistentPrompt,
       remoteCompanion: {
         enabled: remoteEnabled,
@@ -134,6 +145,22 @@ export function SettingsPanel({
     })
   }
 
+  const createPromptTemplate = () => {
+    const name = newPromptTemplateName.trim()
+    if (!name) {
+      setError('请输入提示词模板名称')
+      return
+    }
+    if (name.length > 80) {
+      setError('提示词模板名称必须为 1 到 80 个字符')
+      return
+    }
+    void runOperation(async () => {
+      await onCreatePromptTemplate?.(name)
+      setNewPromptTemplateName('')
+    })
+  }
+
   return (
     <div className="settings-backdrop">
       <form className="settings-panel" onSubmit={submit}>
@@ -175,6 +202,34 @@ export function SettingsPanel({
           </div>
         </section>
 
+        <section aria-label="提示词模板列表" className="api-configuration-section prompt-template-section">
+          <div className="configuration-section-heading">
+            <span>提示词模板</span>
+            <small>右键长按 1 秒切换下一套</small>
+          </div>
+          <div className="api-configuration-list">
+            {settings.promptTemplates.map((template, index) => (
+              <div className={`api-configuration-row ${template.id === settings.activePromptTemplateId ? 'active' : ''}`} key={template.id}>
+                <button
+                  aria-label={`使用提示词 ${template.name}`}
+                  className="configuration-name"
+                  onClick={() => void runOperation(() => onActivatePromptTemplate?.(template.id))}
+                  type="button"
+                >
+                  {template.name}
+                </button>
+                <button aria-label={`上移提示词 ${template.name}`} className="configuration-order" disabled={index === 0} onClick={() => void runOperation(() => onMovePromptTemplate?.(template.id, 'up'))} type="button">↑</button>
+                <button aria-label={`下移提示词 ${template.name}`} className="configuration-order" disabled={index === settings.promptTemplates.length - 1} onClick={() => void runOperation(() => onMovePromptTemplate?.(template.id, 'down'))} type="button">↓</button>
+                <button aria-label={`删除提示词 ${template.name}`} className="configuration-delete" disabled={settings.promptTemplates.length === 1} onClick={() => void runOperation(() => onDeletePromptTemplate?.(template.id))} type="button">×</button>
+              </div>
+            ))}
+          </div>
+          <div className="configuration-create">
+            <input aria-label="新提示词模板名称" maxLength={80} placeholder="新提示词模板名称" value={newPromptTemplateName} onChange={(event) => setNewPromptTemplateName(event.target.value)} />
+            <button className="secondary-button" onClick={createPromptTemplate} type="button">新建提示词模板</button>
+          </div>
+        </section>
+
         <label>
           <span>配置名称</span>
           <input aria-label="配置名称" maxLength={80} value={apiConfigName} onChange={(event) => setApiConfigName(event.target.value)} />
@@ -210,7 +265,11 @@ export function SettingsPanel({
           }} step="1" type="range" value={Math.round(opacity * 100)} />
         </label>
         <label>
-          <span>持久化提示词</span>
+          <span>提示词模板名称</span>
+          <input aria-label="提示词模板名称" maxLength={80} value={promptTemplateName} onChange={(event) => setPromptTemplateName(event.target.value)} />
+        </label>
+        <label>
+          <span>提示词内容</span>
           <textarea maxLength={8000} placeholder="例如：重点覆盖数据结构与算法，优先使用 JavaScript。" rows={4} value={persistentPrompt} onChange={(event) => setPersistentPrompt(event.target.value)} />
         </label>
 
@@ -300,6 +359,7 @@ export function SettingsPanel({
               ['clear', '清空截图'],
               ['toggle', '显示 / 隐藏'],
               ['pointerThrough', '鼠标穿透'],
+              ['promptTemplateNext', '切换提示词模板'],
               ['ghostMode', '纯文字悬浮 (穿透模式生效)'],
               ['remoteOutputToggle', '切换远端输出模式'],
               ['scrollUp', '向上滚动回答'],
@@ -348,4 +408,9 @@ export function SettingsPanel({
 function activeConfiguration(settings: PublicSettings) {
   return settings.apiConfigurations.find((configuration) => configuration.id === settings.activeApiConfigurationId)
     ?? settings.apiConfigurations[0]
+}
+
+function activePromptTemplate(settings: PublicSettings) {
+  return settings.promptTemplates.find((template) => template.id === settings.activePromptTemplateId)
+    ?? settings.promptTemplates[0]
 }

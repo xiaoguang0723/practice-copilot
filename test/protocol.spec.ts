@@ -10,6 +10,7 @@ describe('createDefaultSettings', () => {
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
+      promptTemplateNext: 'MouseRightLongPress',
       quit: 'Alt+X',
       remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',

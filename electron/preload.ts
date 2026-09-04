@@ -54,8 +54,12 @@ const api: PracticeApi = {
     copyApiKey: () => ipcRenderer.invoke(IPC.SETTINGS_COPY_API_KEY),
     createApiConfiguration: (name) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_CREATE, name),
     deleteApiConfiguration: (id) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_DELETE, id),
+    activatePromptTemplate: (id) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_ACTIVATE, id),
+    createPromptTemplate: (name) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_CREATE, name),
+    deletePromptTemplate: (id) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_DELETE, id),
     get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
     moveApiConfiguration: (id, direction) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_MOVE, id, direction),
+    movePromptTemplate: (id, direction) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_MOVE, id, direction),
     onChange: (callback) => {
       const listener = (_event: Electron.IpcRendererEvent, settings: PublicSettings) => callback(settings)
       ipcRenderer.on(IPC.SETTINGS_CHANGED, listener)

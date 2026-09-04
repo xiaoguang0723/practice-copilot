@@ -9,6 +9,7 @@ const oldHotkeys: HotkeySettings = {
   clear: 'MouseMiddleDoubleClick',
   ghostMode: 'Alt+M',
   pointerThrough: 'Alt+D',
+  promptTemplateNext: 'MouseRightLongPress',
   quit: 'Alt+X',
   remoteOutputToggle: 'Alt+R',
   scrollDown: 'MouseLeftHold+WheelDown',
@@ -66,5 +67,24 @@ describe('registerHotkeys', () => {
       'Control+Left',
       'Control+Right'
     ])
+  })
+
+  it('registers prompt switching as the configurable default mouse gesture', () => {
+    const registered: string[] = []
+    const registrar: ShortcutRegistrar = {
+      register: (accelerator) => {
+        registered.push(accelerator)
+        return true
+      },
+      unregisterAll: () => undefined
+    }
+
+    expect(registerHotkeys(registrar, oldHotkeys, oldHotkeys, () => undefined)).toEqual({ ok: true })
+    expect(registered).not.toContain('MouseRightLongPress')
+
+    const custom = { ...oldHotkeys, promptTemplateNext: 'Alt+P' }
+    registered.length = 0
+    expect(registerHotkeys(registrar, custom, oldHotkeys, () => undefined)).toEqual({ ok: true })
+    expect(registered).toContain('Alt+P')
   })
 })

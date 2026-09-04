@@ -97,6 +97,27 @@ describe('AppCoordinator', () => {
     expect(signals[1].aborted).toBe(false)
   })
 
+  it('does not emit late deltas after the conversation is cleared', async () => {
+    const events: string[] = []
+    const coordinator = new AppCoordinator({
+      capture: vi.fn(),
+      emitAnswer: (event) => {
+        if (event.type === 'delta') events.push(event.delta)
+      },
+      quit: vi.fn(),
+      stream: async (_input, emitDelta) => {
+        await Promise.resolve()
+        emitDelta('迟到内容')
+        return '迟到内容'
+      },
+      unregisterHotkeys: vi.fn()
+    })
+
+    coordinator.startAnswer({ apiKey: 'key', baseUrl: 'https://example.com/v1', model: 'vision', persistentPrompt: '', userText: '问题' })
+    coordinator.clearConversation()
+    await vi.waitFor(() => expect(events).toEqual([]))
+  })
+
   it('cleans owned resources before quitting', () => {
     const unregisterHotkeys = vi.fn()
     const quit = vi.fn()

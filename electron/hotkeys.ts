@@ -24,7 +24,8 @@ const configurableActions: Array<[keyof HotkeySettings, HotkeyAction]> = [
   ['scrollUp', 'scroll-up'],
   ['scrollDown', 'scroll-down'],
   ['ghostMode', 'ghost-mode'],
-  ['remoteOutputToggle', 'remote-output-toggle']
+  ['remoteOutputToggle', 'remote-output-toggle'],
+  ['promptTemplateNext', 'prompt-template-next']
 ]
 const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string]> = [
   ['move-up', 'Control+Up'],

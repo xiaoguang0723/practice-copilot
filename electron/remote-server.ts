@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import os from 'node:os'
 import QRCode from 'qrcode'
 import { marked } from 'marked'
+import type { RemotePanelState } from '../shared/protocol'
 
 export interface RemoteServerStatus {
   active: boolean
@@ -97,6 +98,11 @@ export class RemoteCompanionServer {
   private outputTarget: 'both' | 'remote-only' = 'both'
   private preferredIp?: string
   private turnTexts = new Map<string, string>()
+  private panelState: RemotePanelState = {
+    apiConfigurationName: '未命名配置',
+    captureCount: 0,
+    promptTemplateName: '默认提示词'
+  }
 
   constructor() {}
 
@@ -142,6 +148,11 @@ export class RemoteCompanionServer {
 
   setOutputTarget(target: 'both' | 'remote-only'): void {
     this.outputTarget = target
+  }
+
+  setPanelState(state: RemotePanelState): void {
+    this.panelState = { ...state }
+    this.broadcast('state', this.panelState)
   }
 
   broadcast(event: string, data: unknown): void {
@@ -230,6 +241,7 @@ export class RemoteCompanionServer {
       })
       res.write(`event: ready\ndata: ${JSON.stringify({ clientCount: this.activeClients.size + 1 })}\n\n`)
       this.activeClients.add(res)
+      res.write(`event: state\ndata: ${JSON.stringify(this.panelState)}\n\n`)
 
       req.on('close', () => {
         this.activeClients.delete(res)
@@ -296,6 +308,23 @@ export class RemoteCompanionServer {
       font-size: 13px;
       font-weight: 600;
       color: #93c5fd;
+    }
+    .panel-state {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      gap: 7px;
+      min-width: 0;
+      margin: 0 8px;
+      color: #cbd5e1;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .panel-state span {
+      max-width: 33%;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .status-badge {
       display: inline-flex;
@@ -463,6 +492,11 @@ export class RemoteCompanionServer {
         <span id="statusText">正在连接...</span>
       </div>
     </div>
+    <div class="panel-state" aria-live="polite">
+      <span id="captureState">已截图 0 张</span>
+      <span id="apiState">API：未命名配置</span>
+      <span id="promptState">提示词：默认提示词</span>
+    </div>
     <div class="header-actions">
       <button class="btn" id="fontDown" title="缩小字号">A-</button>
       <button class="btn" id="fontUp" title="放大字号">A+</button>
@@ -485,6 +519,9 @@ export class RemoteCompanionServer {
     const turnsList = document.getElementById('turnsList');
     const emptyState = document.getElementById('emptyState');
     const clearBtn = document.getElementById('clearBtn');
+    const captureState = document.getElementById('captureState');
+    const apiState = document.getElementById('apiState');
+    const promptState = document.getElementById('promptState');
 
     // 字体调节
     const fontLevels = [11, 12, 13, 14, 15, 17, 20];
@@ -675,6 +712,15 @@ export class RemoteCompanionServer {
         try {
           const data = JSON.parse(e.data);
           createTurnCard(data.turnId, data.userText);
+        } catch (_) {}
+      });
+
+      source.addEventListener('state', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          captureState.textContent = '已截图 ' + (Number(data.captureCount) || 0) + ' 张';
+          apiState.textContent = 'API：' + (data.apiConfigurationName || '未命名配置');
+          promptState.textContent = '提示词：' + (data.promptTemplateName || '默认提示词');
         } catch (_) {}
       });
 

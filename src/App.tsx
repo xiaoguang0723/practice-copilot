@@ -153,6 +153,7 @@ export function App() {
         <div className="brand-copy">
           <strong>Practice Copilot</strong>
           {settings && <span className="configuration-badge">{settings.apiConfigurations.find((configuration) => configuration.id === settings.activeApiConfigurationId)?.name}</span>}
+          {settings && <span className="prompt-template-badge">提示词：{settings.promptTemplates.find((template) => template.id === settings.activePromptTemplateId)?.name}</span>}
           <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : '左键双击截图 · 右键双击发送'}</span>
         </div>
         <div className="title-actions">
@@ -219,7 +220,7 @@ export function App() {
 
       {showSettings && settings && (
         <SettingsPanel
-          key={settings.activeApiConfigurationId}
+          key={`${settings.activeApiConfigurationId}:${settings.activePromptTemplateId}`}
           onActivateApiConfiguration={async (id) => setSettings(await window.practice.settings.activateApiConfiguration(id))}
           onClearApiKey={async () => setSettings(await window.practice.settings.clearApiKey())}
           onClose={() => setShowSettings(false)}
@@ -227,6 +228,10 @@ export function App() {
           onCreateApiConfiguration={async (name) => setSettings(await window.practice.settings.createApiConfiguration(name))}
           onDeleteApiConfiguration={async (id) => setSettings(await window.practice.settings.deleteApiConfiguration(id))}
           onMoveApiConfiguration={async (id, direction) => setSettings(await window.practice.settings.moveApiConfiguration(id, direction))}
+          onActivatePromptTemplate={async (id) => setSettings(await window.practice.settings.activatePromptTemplate(id))}
+          onCreatePromptTemplate={async (name) => setSettings(await window.practice.settings.createPromptTemplate(name))}
+          onDeletePromptTemplate={async (id) => setSettings(await window.practice.settings.deletePromptTemplate(id))}
+          onMovePromptTemplate={async (id, direction) => setSettings(await window.practice.settings.movePromptTemplate(id, direction))}
           onOpacityPreview={(opacity) => {
             void window.practice.window.setOpacity(opacity)
           }}

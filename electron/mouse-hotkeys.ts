@@ -11,6 +11,7 @@ export type MouseShortcut =
   | 'Mouse4'
   | 'Mouse5'
   | 'MouseRightDoubleClick'
+  | 'MouseRightLongPress'
 export type RecordedShortcut = string
 
 const buttonNames: Record<number, MouseShortcut> = { 3: 'MouseMiddle', 4: 'Mouse4', 5: 'Mouse5' }
@@ -55,7 +56,8 @@ export function isMouseShortcut(value: string): value is MouseShortcut {
     'MouseMiddleLongPress',
     'Mouse4',
     'Mouse5',
-    'MouseRightDoubleClick'
+    'MouseRightDoubleClick',
+    'MouseRightLongPress'
   ].includes(value)
 }
 
@@ -81,6 +83,8 @@ export class MouseHotkeyManager {
   private readonly lastClickAt = new Map<number, number>()
   private readonly pendingDoubleClickTimers = new Map<number, ReturnType<typeof setTimeout>>()
   private middleLongPressTimer: ReturnType<typeof setTimeout> | undefined
+  private rightLongPressTimer: ReturnType<typeof setTimeout> | undefined
+  private rightDoubleClickPending = false
   private chordActive = false
   private readonly dispatchMouseDown = (event: MouseHookEvent) => {
     if (this.recording) return
@@ -96,8 +100,20 @@ export class MouseHotkeyManager {
         this.lastClickAt.delete(2)
         this.cancelPendingDoubleClick(1)
         this.cancelPendingDoubleClick(2)
+        this.clearRightLongPressTimer()
+        this.rightDoubleClickPending = false
         this.handlers.get('MouseLeftRightChord')?.()
         return
+      }
+      if (button === 2) {
+        this.clearRightLongPressTimer()
+        this.rightLongPressTimer = setTimeout(() => {
+          this.rightLongPressTimer = undefined
+          this.lastClickAt.delete(2)
+          this.cancelPendingDoubleClick(2)
+          this.rightDoubleClickPending = false
+          this.handlers.get('MouseRightLongPress')?.()
+        }, 1000)
       }
       this.dispatchDoubleClick(button, now)
       return
@@ -127,6 +143,13 @@ export class MouseHotkeyManager {
     const button = Number(event.button)
     this.pressed.delete(button)
     this.pressedAt.delete(button)
+    if (button === 2) {
+      this.clearRightLongPressTimer()
+      if (this.rightDoubleClickPending && !this.chordActive) {
+        this.rightDoubleClickPending = false
+        this.handlers.get('MouseRightDoubleClick')?.()
+      }
+    }
     if (button === 3) this.clearMiddleLongPressTimer()
     if ((button === 1 || button === 2) && this.pressed.size === 0) this.chordActive = false
   }
@@ -142,12 +165,15 @@ export class MouseHotkeyManager {
     const previous = this.lastClickAt.get(button)
     if (previous !== undefined && now - previous <= 350) {
       this.lastClickAt.delete(button)
+      if (button === 2) this.rightDoubleClickPending = true
       const shortcut = button === 1 ? 'MouseLeftDoubleClick' : 'MouseRightDoubleClick'
       this.cancelPendingDoubleClick(button)
-      this.pendingDoubleClickTimers.set(button, setTimeout(() => {
-        this.pendingDoubleClickTimers.delete(button)
-        this.handlers.get(shortcut)?.()
-      }, 150))
+      if (button === 1) {
+        this.pendingDoubleClickTimers.set(button, setTimeout(() => {
+          this.pendingDoubleClickTimers.delete(button)
+          this.handlers.get(shortcut)?.()
+        }, 150))
+      }
     } else {
       this.lastClickAt.set(button, now)
     }
@@ -160,8 +186,17 @@ export class MouseHotkeyManager {
     }
   }
 
+  private clearRightLongPressTimer(): void {
+    if (this.rightLongPressTimer !== undefined) {
+      clearTimeout(this.rightLongPressTimer)
+      this.rightLongPressTimer = undefined
+    }
+  }
+
   private clearGestureState(): void {
     this.clearMiddleLongPressTimer()
+    this.clearRightLongPressTimer()
+    this.rightDoubleClickPending = false
     this.pressed.clear()
     this.pressedAt.clear()
     this.lastClickAt.clear()
@@ -203,6 +238,8 @@ export class MouseHotkeyManager {
       const pressedAt = new Map<number, number>()
       const lastClickAt = new Map<number, number>()
       let middleTimer: ReturnType<typeof setTimeout> | undefined
+      let rightTimer: ReturnType<typeof setTimeout> | undefined
+      let rightDoubleClickPending = false
 
       const onKey = (event: { keycode: number; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }) => {
         const shortcut = formatKey(event)
@@ -216,12 +253,22 @@ export class MouseHotkeyManager {
           pressed.add(button)
           pressedAt.set(button, now)
           if (pressed.has(other) && now - (pressedAt.get(other) ?? now) <= 150) {
+            if (rightTimer !== undefined) clearTimeout(rightTimer)
             finish('MouseLeftRightChord')
             return
           }
+          if (button === 2) {
+            if (rightTimer !== undefined) clearTimeout(rightTimer)
+            rightTimer = setTimeout(() => {
+              rightTimer = undefined
+              rightDoubleClickPending = false
+              finish('MouseRightLongPress')
+            }, 1000)
+          }
           const previous = lastClickAt.get(button)
           if (previous !== undefined && now - previous <= 350) {
-            finish(button === 1 ? 'MouseLeftDoubleClick' : 'MouseRightDoubleClick')
+            if (button === 1) finish('MouseLeftDoubleClick')
+            else rightDoubleClickPending = true
           } else {
             lastClickAt.set(button, now)
           }
@@ -242,6 +289,11 @@ export class MouseHotkeyManager {
         const button = Number(event.button)
         pressed.delete(button)
         pressedAt.delete(button)
+        if (button === 2 && rightTimer !== undefined) {
+          clearTimeout(rightTimer)
+          rightTimer = undefined
+        }
+        if (button === 2 && rightDoubleClickPending) finish('MouseRightDoubleClick')
         if (button === 3 && middleTimer !== undefined) {
           clearTimeout(middleTimer)
           middleTimer = undefined
@@ -258,6 +310,7 @@ export class MouseHotkeyManager {
         this.hook.off('mouseup', onMouseUp)
         this.hook.off('wheel', onWheel)
         if (middleTimer !== undefined) clearTimeout(middleTimer)
+        if (rightTimer !== undefined) clearTimeout(rightTimer)
         resolve(shortcut)
       }
       this.hook.on('keydown', onKey)

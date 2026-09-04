@@ -11,7 +11,7 @@ import {
   type Rectangle
 } from 'electron'
 
-import { IPC, type HotkeyAction, type SettingsPatch } from '../shared/protocol'
+import { IPC, type HotkeyAction, type RemotePanelState, type SettingsPatch } from '../shared/protocol'
 import { validateSettingsPatch } from '../shared/validation'
 import { capturePrimaryDisplay } from './capture'
 import { AppCoordinator } from './coordinator'
@@ -52,7 +52,18 @@ async function bootstrap(): Promise<void> {
   let quitting = false
   let pointerThrough = false
   let ghostMode = false
+  let captureCount = 0
   const mouseHotkeys = new MouseHotkeyManager()
+
+  const getRemotePanelState = (): RemotePanelState => {
+    const current = settings.getPublic()
+    return {
+      apiConfigurationName: current.apiConfigurations.find((configuration) => configuration.id === current.activeApiConfigurationId)?.name ?? '未命名配置',
+      captureCount,
+      promptTemplateName: current.promptTemplates.find((template) => template.id === current.activePromptTemplateId)?.name ?? '默认提示词'
+    }
+  }
+  remoteServer.setPanelState(getRemotePanelState())
 
   if (settings.getPublic().remoteCompanion.enabled) {
     void remoteServer.start(
@@ -156,12 +167,30 @@ async function bootstrap(): Promise<void> {
 
   const publishSettings = (current = settings.getPublic()) => {
     window.webContents.send(IPC.SETTINGS_CHANGED, current)
+    remoteServer.setPanelState({
+      apiConfigurationName: current.apiConfigurations.find((configuration) => configuration.id === current.activeApiConfigurationId)?.name ?? '未命名配置',
+      captureCount,
+      promptTemplateName: current.promptTemplates.find((template) => template.id === current.activePromptTemplateId)?.name ?? '默认提示词'
+    })
     return current
+  }
+
+  const clearConversation = () => {
+    coordinator.clearConversation()
+    captureCount = 0
+    remoteServer.broadcast('clear', {})
+    remoteServer.setPanelState(getRemotePanelState())
   }
 
   const activateApiConfiguration = (id: string) => {
     const current = settings.activateApiConfiguration(id)
-    coordinator.clearConversation()
+    clearConversation()
+    return publishSettings(current)
+  }
+
+  const activatePromptTemplate = (id: string) => {
+    const current = settings.activatePromptTemplate(id)
+    clearConversation()
     return publishSettings(current)
   }
 
@@ -176,6 +205,7 @@ async function bootstrap(): Promise<void> {
     if (action === 'quit') coordinator.shutdown()
     else if (action === 'toggle') toggleWindow()
     else if (action === 'configuration-next') activateNextApiConfiguration()
+    else if (action === 'prompt-template-next') activateNextPromptTemplate()
     else if (action === 'pointer-through') {
       pointerThrough = !pointerThrough
       setPointerThrough(window, pointerThrough)
@@ -225,6 +255,13 @@ async function bootstrap(): Promise<void> {
     else window.webContents.send(IPC.HOTKEY_ACTION, action)
   }
 
+  const activateNextPromptTemplate = () => {
+    const current = settings.getPublic()
+    const index = current.promptTemplates.findIndex((template) => template.id === current.activePromptTemplateId)
+    const next = current.promptTemplates[(index + 1) % current.promptTemplates.length]
+    return activatePromptTemplate(next.id)
+  }
+
   const initialRegistration = registerHotkeys(
     globalShortcut,
     settings.getPublic().hotkeys,
@@ -241,18 +278,37 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.handle(IPC.SETTINGS_CONFIGURATION_CREATE, (_event, name: unknown) => {
     const current = settings.createApiConfiguration(String(name ?? ''))
-    coordinator.clearConversation()
+    clearConversation()
     return publishSettings(current)
   })
   ipcMain.handle(IPC.SETTINGS_CONFIGURATION_DELETE, (_event, id: unknown) => {
     if (typeof id !== 'string') throw new Error('配置无效')
     const current = settings.deleteApiConfiguration(id)
-    coordinator.clearConversation()
+    clearConversation()
     return publishSettings(current)
   })
   ipcMain.handle(IPC.SETTINGS_CONFIGURATION_MOVE, (_event, id: unknown, direction: unknown) => {
     if (typeof id !== 'string' || (direction !== 'up' && direction !== 'down')) throw new Error('配置排序无效')
     return publishSettings(settings.moveApiConfiguration(id, direction))
+  })
+  ipcMain.handle(IPC.SETTINGS_PROMPT_TEMPLATE_ACTIVATE, (_event, id: unknown) => {
+    if (typeof id !== 'string') throw new Error('提示词模板无效')
+    return activatePromptTemplate(id)
+  })
+  ipcMain.handle(IPC.SETTINGS_PROMPT_TEMPLATE_CREATE, (_event, name: unknown) => {
+    const current = settings.createPromptTemplate(String(name ?? ''))
+    clearConversation()
+    return publishSettings(current)
+  })
+  ipcMain.handle(IPC.SETTINGS_PROMPT_TEMPLATE_DELETE, (_event, id: unknown) => {
+    if (typeof id !== 'string') throw new Error('提示词模板无效')
+    const current = settings.deletePromptTemplate(id)
+    clearConversation()
+    return publishSettings(current)
+  })
+  ipcMain.handle(IPC.SETTINGS_PROMPT_TEMPLATE_MOVE, (_event, id: unknown, direction: unknown) => {
+    if (typeof id !== 'string' || (direction !== 'up' && direction !== 'down')) throw new Error('提示词模板排序无效')
+    return publishSettings(settings.movePromptTemplate(id, direction))
   })
   ipcMain.handle(IPC.KNOWLEDGE_LIST, () => knowledge.listKnowledgeBases())
   ipcMain.handle(IPC.KNOWLEDGE_CREATE, (_event, name: unknown) => knowledge.createKnowledgeBase(String(name ?? '')))
@@ -293,13 +349,19 @@ async function bootstrap(): Promise<void> {
           remoteServer.stop()
         }
       }
+      remoteServer.setPanelState(getRemotePanelState())
       return saved
     } catch (error) {
       if (patch.hotkeys) registerHotkeys(globalShortcut, previous, previous, handleAction, mouseHotkeys)
       throw error
     }
   })
-  ipcMain.handle(IPC.CAPTURE_PRIMARY, () => coordinator.capturePrimary())
+  ipcMain.handle(IPC.CAPTURE_PRIMARY, async () => {
+    const result = await coordinator.capturePrimary()
+    captureCount = result.count
+    remoteServer.setPanelState(getRemotePanelState())
+    return result
+  })
   ipcMain.handle(IPC.ANSWER_START, (_event, input: { text?: unknown }) => {
     if (typeof input?.text !== 'string' || input.text.length > 8000) {
       throw new Error('输入内容无效')
@@ -317,6 +379,8 @@ async function bootstrap(): Promise<void> {
       persistentPrompt: current.persistentPrompt,
       selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
+    captureCount = 0
+    remoteServer.setPanelState(getRemotePanelState())
     remoteServer.broadcast('turn-start', {
       turnId: result.turnId,
       userText: input.text
@@ -325,8 +389,7 @@ async function bootstrap(): Promise<void> {
   })
   ipcMain.handle(IPC.HOTKEY_RECORD, () => mouseHotkeys.record())
   ipcMain.handle(IPC.CONVERSATION_CLEAR, () => {
-    coordinator.clearConversation()
-    remoteServer.broadcast('clear', {})
+    clearConversation()
   })
   ipcMain.handle(IPC.ANSWER_CANCEL, (_event, requestId: unknown) => {
     if (typeof requestId === 'string') coordinator.cancelAnswer(requestId)

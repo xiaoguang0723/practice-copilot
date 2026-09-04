@@ -36,20 +36,29 @@ interface LegacySettingsFile {
   model?: string
   opacity?: number
   persistentPrompt?: string
+  promptTemplates?: StoredPromptTemplate[]
+  activePromptTemplateId?: string
   selectedKnowledgeBaseIds?: string[]
   version?: number
 }
 
+interface StoredPromptTemplate {
+  content: string
+  id: string
+  name: string
+}
+
 interface SettingsFile {
   activeApiConfigurationId: string
+  activePromptTemplateId: string
   apiConfigurations: StoredApiConfiguration[]
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
   opacity: number
-  persistentPrompt: string
+  promptTemplates: StoredPromptTemplate[]
   remoteCompanion: RemoteCompanionSettings
   selectedKnowledgeBaseIds: string[]
-  version: 3
+  version: 4
 }
 
 function defaultFile(): SettingsFile {
@@ -57,6 +66,7 @@ function defaultFile(): SettingsFile {
   const configuration = defaults.apiConfigurations[0]
   return {
     activeApiConfigurationId: configuration.id,
+    activePromptTemplateId: defaults.activePromptTemplateId,
     apiConfigurations: [{
       apiProtocol: configuration.apiProtocol,
       baseUrl: configuration.baseUrl,
@@ -67,13 +77,13 @@ function defaultFile(): SettingsFile {
     hotkeys: { ...defaults.hotkeys },
     knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
     opacity: defaults.opacity,
-    persistentPrompt: defaults.persistentPrompt,
+    promptTemplates: [{ content: '', id: defaults.activePromptTemplateId, name: '默认提示词' }],
     remoteCompanion: {
       ...defaults.remoteCompanion,
       token: randomUUID().replace(/-/g, '')
     },
     selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
-    version: 3
+    version: 4
   }
 }
 
@@ -85,12 +95,14 @@ export class SettingsStore {
     private readonly cipher: SecretCipher
   ) {
     this.data = this.load()
+    this.persistMigratedFileIfNeeded()
   }
 
   getPublic(): PublicSettings {
     const active = this.activeConfiguration()
     return {
       activeApiConfigurationId: active.id,
+      activePromptTemplateId: this.data.activePromptTemplateId,
       apiConfigurations: this.data.apiConfigurations.map((configuration) => this.toPublicConfiguration(configuration)),
       apiKeySet: Boolean(active.apiKeyEncrypted),
       apiProtocol: active.apiProtocol,
@@ -99,7 +111,8 @@ export class SettingsStore {
       knowledgeBaseEnabled: this.data.knowledgeBaseEnabled,
       model: active.model,
       opacity: this.data.opacity,
-      persistentPrompt: this.data.persistentPrompt,
+      persistentPrompt: this.activePromptTemplate().content,
+      promptTemplates: this.data.promptTemplates.map((template) => ({ ...template })),
       remoteCompanion: { ...this.data.remoteCompanion },
       selectedKnowledgeBaseIds: [...this.data.selectedKnowledgeBaseIds]
     }
@@ -125,7 +138,8 @@ export class SettingsStore {
     if (patch.baseUrl !== undefined) active.baseUrl = normalizeBaseUrl(patch.baseUrl)
     if (patch.model !== undefined) active.model = patch.model.trim()
     if (patch.opacity !== undefined) this.data.opacity = patch.opacity
-    if (patch.persistentPrompt !== undefined) this.data.persistentPrompt = patch.persistentPrompt
+    if (patch.persistentPrompt !== undefined) this.activePromptTemplate().content = patch.persistentPrompt
+    if (patch.promptTemplateName !== undefined) this.activePromptTemplate().name = this.validateName(patch.promptTemplateName)
     if (patch.hotkeys) this.data.hotkeys = { ...this.data.hotkeys, ...patch.hotkeys }
     if (patch.knowledgeBaseEnabled !== undefined) this.data.knowledgeBaseEnabled = patch.knowledgeBaseEnabled
     if (patch.selectedKnowledgeBaseIds !== undefined) {
@@ -202,8 +216,57 @@ export class SettingsStore {
     return this.getPublic()
   }
 
+  createPromptTemplate(name: string): PublicSettings {
+    const template: StoredPromptTemplate = { content: '', id: randomUUID(), name: this.validateName(name) }
+    this.data.promptTemplates.push(template)
+    this.data.activePromptTemplateId = template.id
+    this.persist()
+    return this.getPublic()
+  }
+
+  activatePromptTemplate(id: string): PublicSettings {
+    this.findPromptTemplate(id)
+    this.data.activePromptTemplateId = id
+    this.persist()
+    return this.getPublic()
+  }
+
+  movePromptTemplate(id: string, direction: 'up' | 'down'): PublicSettings {
+    const index = this.data.promptTemplates.findIndex((template) => template.id === id)
+    if (index < 0) throw new Error('提示词模板不存在')
+    const nextIndex = direction === 'up' ? index - 1 : index + 1
+    if (nextIndex >= 0 && nextIndex < this.data.promptTemplates.length) {
+      const [template] = this.data.promptTemplates.splice(index, 1)
+      this.data.promptTemplates.splice(nextIndex, 0, template)
+      this.persist()
+    }
+    return this.getPublic()
+  }
+
+  deletePromptTemplate(id: string): PublicSettings {
+    if (this.data.promptTemplates.length <= 1) throw new Error('至少保留一个提示词模板')
+    const index = this.data.promptTemplates.findIndex((template) => template.id === id)
+    if (index < 0) throw new Error('提示词模板不存在')
+    this.data.promptTemplates.splice(index, 1)
+    if (this.data.activePromptTemplateId === id) {
+      this.data.activePromptTemplateId = this.data.promptTemplates[Math.min(index, this.data.promptTemplates.length - 1)].id
+    }
+    this.persist()
+    return this.getPublic()
+  }
+
   private activeConfiguration(): StoredApiConfiguration {
     return this.findConfiguration(this.data.activeApiConfigurationId)
+  }
+
+  private activePromptTemplate(): StoredPromptTemplate {
+    return this.findPromptTemplate(this.data.activePromptTemplateId)
+  }
+
+  private findPromptTemplate(id: string): StoredPromptTemplate {
+    const template = this.data.promptTemplates.find((candidate) => candidate.id === id)
+    if (!template) throw new Error('当前提示词模板不存在')
+    return template
   }
 
   private findConfiguration(id: string): StoredApiConfiguration {
@@ -268,6 +331,7 @@ export class SettingsStore {
     activeId: unknown
   ): SettingsFile {
     const defaults = defaultFile()
+    const prompts = this.normalizePromptTemplates(raw)
     return {
       activeApiConfigurationId: typeof activeId === 'string' && configurations.some((config) => config.id === activeId)
         ? activeId
@@ -278,7 +342,8 @@ export class SettingsStore {
         : { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },
       knowledgeBaseEnabled: typeof raw.knowledgeBaseEnabled === 'boolean' ? raw.knowledgeBaseEnabled : defaults.knowledgeBaseEnabled,
       opacity: typeof raw.opacity === 'number' && raw.opacity >= 0.35 && raw.opacity <= 0.95 ? raw.opacity : defaults.opacity,
-      persistentPrompt: typeof raw.persistentPrompt === 'string' ? raw.persistentPrompt : defaults.persistentPrompt,
+      activePromptTemplateId: prompts.activeId,
+      promptTemplates: prompts.templates,
       remoteCompanion: {
         enabled: typeof raw.remoteCompanion?.enabled === 'boolean' ? raw.remoteCompanion.enabled : defaults.remoteCompanion.enabled,
         ip: typeof raw.remoteCompanion?.ip === 'string' ? raw.remoteCompanion.ip : defaults.remoteCompanion.ip,
@@ -293,7 +358,36 @@ export class SettingsStore {
       selectedKnowledgeBaseIds: Array.isArray(raw.selectedKnowledgeBaseIds)
         ? raw.selectedKnowledgeBaseIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
         : defaults.selectedKnowledgeBaseIds,
-      version: 3
+      version: 4
+    }
+  }
+
+  private normalizePromptTemplates(raw: LegacySettingsFile & Partial<SettingsFile>): { activeId: string; templates: StoredPromptTemplate[] } {
+    const defaults = defaultFile()
+    if (Array.isArray(raw.promptTemplates) && raw.promptTemplates.length) {
+      const templates = raw.promptTemplates
+        .filter((template): template is StoredPromptTemplate => Boolean(template && typeof template === 'object'))
+        .map((template) => ({
+          content: typeof template.content === 'string' ? template.content.slice(0, 8000) : '',
+          id: typeof template.id === 'string' && template.id ? template.id : randomUUID(),
+          name: typeof template.name === 'string' && template.name.trim() ? template.name.trim().slice(0, 80) : '未命名提示词'
+        }))
+      if (templates.length) {
+        return {
+          activeId: typeof raw.activePromptTemplateId === 'string' && templates.some((template) => template.id === raw.activePromptTemplateId)
+            ? raw.activePromptTemplateId
+            : templates[0].id,
+          templates
+        }
+      }
+    }
+    return {
+      activeId: defaults.activePromptTemplateId,
+      templates: [{
+        content: typeof raw.persistentPrompt === 'string' ? raw.persistentPrompt.slice(0, 8000) : '',
+        id: defaults.activePromptTemplateId,
+        name: '默认提示词'
+      }]
     }
   }
 
@@ -302,6 +396,16 @@ export class SettingsStore {
     const temporaryPath = `${this.filePath}.tmp`
     writeFileSync(temporaryPath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8')
     renameSync(temporaryPath, this.filePath)
+  }
+
+  private persistMigratedFileIfNeeded(): void {
+    if (!existsSync(this.filePath)) return
+    try {
+      const raw = JSON.parse(readFileSync(this.filePath, 'utf8')) as Partial<SettingsFile>
+      if (raw.version !== 4 || !Array.isArray(raw.promptTemplates) || !raw.promptTemplates.length) this.persist()
+    } catch {
+      // Keep the in-memory defaults for malformed settings files.
+    }
   }
 }
 

@@ -4,6 +4,7 @@ export interface HotkeySettings {
   clear: string
   ghostMode: string
   pointerThrough: string
+  promptTemplateNext: string
   quit: string
   remoteOutputToggle: string
   scrollDown: string
@@ -28,8 +29,21 @@ export interface ApiConfiguration {
   name: string
 }
 
+export interface PromptTemplate {
+  content: string
+  id: string
+  name: string
+}
+
+export interface RemotePanelState {
+  apiConfigurationName: string
+  captureCount: number
+  promptTemplateName: string
+}
+
 export interface PublicSettings {
   activeApiConfigurationId: string
+  activePromptTemplateId: string
   apiConfigurations: ApiConfiguration[]
   apiKeySet: boolean
   apiProtocol: 'chat' | 'response'
@@ -39,6 +53,7 @@ export interface PublicSettings {
   model: string
   opacity: number
   persistentPrompt: string
+  promptTemplates: PromptTemplate[]
   remoteCompanion: RemoteCompanionSettings
   selectedKnowledgeBaseIds: string[]
 }
@@ -53,6 +68,7 @@ export interface SettingsPatch {
   model?: string
   opacity?: number
   persistentPrompt?: string
+  promptTemplateName?: string
   remoteCompanion?: Partial<RemoteCompanionSettings>
   selectedKnowledgeBaseIds?: string[]
 }
@@ -82,6 +98,7 @@ export type HotkeyAction =
   | 'move-right'
   | 'move-up'
   | 'pointer-through'
+  | 'prompt-template-next'
   | 'quit'
   | 'remote-output-toggle'
   | 'scroll-down'
@@ -107,6 +124,10 @@ export const IPC = {
   SETTINGS_CONFIGURATION_CREATE: 'settings:configuration-create',
   SETTINGS_CONFIGURATION_DELETE: 'settings:configuration-delete',
   SETTINGS_CONFIGURATION_MOVE: 'settings:configuration-move',
+  SETTINGS_PROMPT_TEMPLATE_ACTIVATE: 'settings:prompt-template-activate',
+  SETTINGS_PROMPT_TEMPLATE_CREATE: 'settings:prompt-template-create',
+  SETTINGS_PROMPT_TEMPLATE_DELETE: 'settings:prompt-template-delete',
+  SETTINGS_PROMPT_TEMPLATE_MOVE: 'settings:prompt-template-move',
   SETTINGS_COPY_API_KEY: 'settings:copy-api-key',
   SETTINGS_CHANGED: 'settings:changed',
   SETTINGS_GET: 'settings:get',
@@ -164,6 +185,10 @@ export interface PracticeApi {
     deleteApiConfiguration(id: string): Promise<PublicSettings>
     get(): Promise<PublicSettings>
     moveApiConfiguration(id: string, direction: 'up' | 'down'): Promise<PublicSettings>
+    activatePromptTemplate(id: string): Promise<PublicSettings>
+    createPromptTemplate(name: string): Promise<PublicSettings>
+    deletePromptTemplate(id: string): Promise<PublicSettings>
+    movePromptTemplate(id: string, direction: 'up' | 'down'): Promise<PublicSettings>
     onChange(callback: (settings: PublicSettings) => void): () => void
     save(patch: SettingsPatch): Promise<PublicSettings>
   }
@@ -185,6 +210,7 @@ export function createDefaultSettings(): PublicSettings {
   }
   return {
     activeApiConfigurationId: defaultConfiguration.id,
+    activePromptTemplateId: 'default-prompt',
     apiConfigurations: [defaultConfiguration],
     apiKeySet: false,
     apiProtocol: 'chat',
@@ -195,6 +221,7 @@ export function createDefaultSettings(): PublicSettings {
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
+      promptTemplateNext: 'MouseRightLongPress',
       quit: 'Alt+X',
       remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
@@ -205,6 +232,7 @@ export function createDefaultSettings(): PublicSettings {
     model: 'gpt-4.1-mini',
     opacity: 0.88,
     persistentPrompt: '',
+    promptTemplates: [{ content: '', id: 'default-prompt', name: '默认提示词' }],
     remoteCompanion: {
       enabled: false,
       outputTarget: 'both',

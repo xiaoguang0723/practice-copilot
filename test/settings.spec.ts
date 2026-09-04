@@ -71,6 +71,7 @@ describe('SettingsStore', () => {
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
+      promptTemplateNext: 'MouseRightLongPress',
       quit: 'Alt+X',
       remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
@@ -172,6 +173,7 @@ describe('SettingsStore', () => {
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
       pointerThrough: 'Alt+D',
+      promptTemplateNext: 'MouseRightLongPress',
       quit: 'Alt+X',
       remoteOutputToggle: 'Alt+R',
       scrollDown: 'MouseLeftHold+WheelDown',
@@ -192,7 +194,8 @@ describe('SettingsStore', () => {
         answer: 'Alt+W',
         capture: 'Alt+Q',
         clear: 'Alt+R',
-        pointerThrough: 'Alt+D',
+      pointerThrough: 'Alt+D',
+      promptTemplateNext: 'MouseRightLongPress',
         quit: 'Alt+X',
         scrollDown: 'Shift+Down',
         scrollUp: 'Shift+Up',
@@ -245,6 +248,34 @@ describe('SettingsStore', () => {
     expect(afterDelete.apiConfigurations).toHaveLength(1)
     expect(afterDelete.activeApiConfigurationId).not.toBe(secondId)
     expect(() => store.deleteApiConfiguration(afterDelete.activeApiConfigurationId)).toThrow('至少保留一个')
+  })
+
+  it('migrates the legacy persistent prompt into the default prompt template', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'practice-copilot-'))
+    directories.push(directory)
+    const filePath = join(directory, 'settings.json')
+    writeFileSync(filePath, JSON.stringify({ persistentPrompt: '请优先给出复杂度分析。', version: 3 }), 'utf8')
+
+    const { store } = createStoreFrom(filePath)
+
+    expect(store.getPublic().promptTemplates).toEqual([
+      expect.objectContaining({ name: '默认提示词', content: '请优先给出复杂度分析。' })
+    ])
+    expect(store.getPublic().activePromptTemplateId).toBe(store.getPublic().promptTemplates[0].id)
+    expect(JSON.parse(readFileSync(filePath, 'utf8'))).toMatchObject({ version: 4, promptTemplates: [{ name: '默认提示词' }] })
+  })
+
+  it('creates, edits, reorders, activates, and deletes prompt templates', () => {
+    const { store } = createStore()
+    store.applyPatch({ persistentPrompt: '第一套' })
+    const created = store.createPromptTemplate('第二套')
+    store.applyPatch({ persistentPrompt: '第二套内容' })
+    const secondId = created.activePromptTemplateId
+
+    expect(store.movePromptTemplate(secondId, 'up').promptTemplates.map((template) => template.name)).toEqual(['第二套', '默认提示词'])
+    expect(store.activatePromptTemplate(store.getPublic().promptTemplates[1].id).persistentPrompt).toBe('第一套')
+    expect(store.deletePromptTemplate(secondId).promptTemplates).toHaveLength(1)
+    expect(() => store.deletePromptTemplate(store.getPublic().activePromptTemplateId)).toThrow('至少保留一个')
   })
 })
 

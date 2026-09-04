@@ -109,6 +109,20 @@ button {
   white-space: nowrap;
 }
 
+.brand-copy .prompt-template-badge {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 4px;
+  background: rgba(30, 64, 175, 0.18);
+  color: #bfdbfe;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .title-actions {
   display: flex;
   gap: 5px;

@@ -172,7 +172,9 @@ export class AppCoordinator {
 
       const answer = await this.dependencies.stream(
         { ...currentInput, knowledgeContext },
-        (delta) => this.dependencies.emitAnswer({ delta, requestId, turnId, type: 'delta' }),
+        (delta) => {
+          if (!controller.signal.aborted) this.dependencies.emitAnswer({ delta, requestId, turnId, type: 'delta' })
+        },
         controller.signal
       )
       if (!controller.signal.aborted) {

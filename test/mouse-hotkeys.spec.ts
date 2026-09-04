@@ -120,6 +120,46 @@ describe('MouseHotkeyManager', () => {
     vi.useRealTimers()
   })
 
+  it('dispatches right long press and does not dispatch right double click after it', () => {
+    vi.useFakeTimers()
+    const hook = new FakeHook()
+    const manager = new MouseHotkeyManager(hook)
+    const nextPrompt = vi.fn()
+    const answer = vi.fn()
+    manager.register('MouseRightLongPress', nextPrompt)
+    manager.register('MouseRightDoubleClick', answer)
+
+    hook.emit('mousedown', { button: 2, time: 100 })
+    vi.advanceTimersByTime(1000)
+    hook.emit('mouseup', { button: 2, time: 1100 })
+    hook.emit('mousedown', { button: 2, time: 1200 })
+    hook.emit('mouseup', { button: 2, time: 1250 })
+    vi.advanceTimersByTime(150)
+
+    expect(nextPrompt).toHaveBeenCalledOnce()
+    expect(answer).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('prefers right long press when the second right press is held', () => {
+    vi.useFakeTimers()
+    const hook = new FakeHook()
+    const manager = new MouseHotkeyManager(hook)
+    const nextPrompt = vi.fn()
+    const answer = vi.fn()
+    manager.register('MouseRightLongPress', nextPrompt)
+    manager.register('MouseRightDoubleClick', answer)
+
+    click(hook, 2, 100)
+    hook.emit('mousedown', { button: 2, time: 300 })
+    vi.advanceTimersByTime(1000)
+    hook.emit('mouseup', { button: 2, time: 1300 })
+
+    expect(nextPrompt).toHaveBeenCalledOnce()
+    expect(answer).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
   it('scrolls only while the left button is held', () => {
     const hook = new FakeHook()
     const manager = new MouseHotkeyManager(hook)

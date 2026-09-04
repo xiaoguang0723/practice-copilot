@@ -43,6 +43,10 @@ export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
     const name = patch.apiConfigName.trim()
     if (!name || name.length > 80) return { message: '配置名称必须为 1 到 80 个字符', ok: false }
   }
+  if (patch.promptTemplateName !== undefined) {
+    const name = patch.promptTemplateName.trim()
+    if (!name || name.length > 80) return { message: '提示词模板名称必须为 1 到 80 个字符', ok: false }
+  }
   if (patch.apiProtocol !== undefined && patch.apiProtocol !== 'chat' && patch.apiProtocol !== 'response') {
     return { message: '接口协议无效', ok: false }
   }
