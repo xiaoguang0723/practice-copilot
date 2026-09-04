@@ -263,14 +263,19 @@ export class RemoteCompanionServer {
       --base-font-size: 13px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      overscroll-behavior-y: none;
+      -webkit-overflow-scrolling: touch;
+    }
     body {
       background: #030712;
       color: #f3f4f6;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       font-size: var(--base-font-size);
       line-height: 1.58;
-      padding-bottom: 50px;
+      padding-bottom: 80px;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
     header {
       position: sticky;
@@ -521,14 +526,47 @@ export class RemoteCompanionServer {
     let currentCursor = null;
     let rawText = '';
 
-    // 屏幕常亮
-    if ('wakeLock' in navigator) {
-      navigator.wakeLock.request('screen').catch(() => {});
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          navigator.wakeLock.request('screen').catch(() => {});
+    // 双重保活防熄屏：优先 Wake Lock，降级使用静音微型循环视频管道（通杀所有移动端浏览器）
+    function enableKeepAwake() {
+      if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').catch(() => {});
+      }
+      try {
+        let v = document.getElementById('noSleepVideo');
+        if (!v) {
+          v = document.createElement('video');
+          v.id = 'noSleepVideo';
+          v.setAttribute('playsinline', '');
+          v.setAttribute('webkit-playsinline', '');
+          v.muted = true;
+          v.loop = true;
+          v.style.position = 'fixed';
+          v.style.width = '1px';
+          v.style.height = '1px';
+          v.style.opacity = '0.001';
+          v.style.pointerEvents = 'none';
+          v.src = 'data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAW1wNDJpc29tYXZjMQAAACFtb292AAAAbG12aGQAAAAA1uL0g9bi9IMAAAPoAAAAAAABAAEAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAB0dHJhazAAAAA=';
+          document.body.appendChild(v);
         }
-      });
+        v.play().catch(() => {});
+      } catch (_) {}
+    }
+    enableKeepAwake();
+    document.addEventListener('touchstart', enableKeepAwake, { once: true });
+    document.addEventListener('click', enableKeepAwake, { once: true });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') enableKeepAwake();
+    });
+
+    let userScrolledUp = false;
+    window.addEventListener('scroll', () => {
+      const distFromBottom = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+      userScrolledUp = distFromBottom > 150;
+    }, { passive: true });
+
+    function autoFollowBottom() {
+      if (userScrolledUp) return;
+      window.scrollTo(0, document.documentElement.scrollHeight);
     }
 
     clearBtn.addEventListener('click', () => {
@@ -616,7 +654,8 @@ export class RemoteCompanionServer {
       currentCursor = cursor;
       rawText = '';
 
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      userScrolledUp = false;
+      autoFollowBottom();
     }
 
     function connectSSE() {
@@ -644,6 +683,7 @@ export class RemoteCompanionServer {
           const data = JSON.parse(e.data);
           if (!currentCard || data.turnId !== currentTurnId) {
             createTurnCard(data.turnId, '');
+            userScrolledUp = false;
           }
           if (data.html) {
             currentContentEl.innerHTML = data.html;
@@ -651,7 +691,7 @@ export class RemoteCompanionServer {
             rawText += data.delta;
             currentContentEl.innerHTML = formatMarkdown(rawText);
           }
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          autoFollowBottom();
         } catch (_) {}
       });
 
@@ -666,6 +706,7 @@ export class RemoteCompanionServer {
           currentCursor.remove();
           currentCursor = null;
         }
+        autoFollowBottom();
       });
 
       source.addEventListener('clear', () => {
