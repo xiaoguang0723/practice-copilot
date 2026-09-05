@@ -293,9 +293,9 @@ export class RemoteCompanionServer {
       position: sticky;
       top: 0;
       z-index: 100;
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
       padding: 8px 14px;
       background: rgba(3, 7, 18, 0.94);
       backdrop-filter: blur(12px);
@@ -310,21 +310,26 @@ export class RemoteCompanionServer {
       color: #93c5fd;
     }
     .panel-state {
-      display: flex;
-      flex: 1;
-      justify-content: center;
-      gap: 7px;
+      display: grid;
+      grid-column: 1 / -1;
+      grid-row: 2;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px 8px;
       min-width: 0;
-      margin: 0 8px;
+      width: 100%;
+      margin: 6px 0 0;
       color: #cbd5e1;
       font-size: 10px;
-      white-space: nowrap;
-      overflow: hidden;
+      line-height: 1.35;
+      white-space: normal;
     }
     .panel-state span {
-      max-width: 33%;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      min-width: 0;
+      max-width: none;
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+      word-break: break-word;
     }
     .status-badge {
       display: inline-flex;
@@ -349,6 +354,8 @@ export class RemoteCompanionServer {
     }
     .header-actions {
       display: flex;
+      grid-column: 3;
+      grid-row: 1;
       align-items: center;
       gap: 6px;
     }
@@ -430,21 +437,23 @@ export class RemoteCompanionServer {
       line-height: 1.35;
     }
     .markdown-content pre {
+      max-width: 100%;
       background: #0d1117;
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 8px;
       padding: 12px 14px;
       margin: 10px 0;
-      overflow-x: auto;
+      overflow-x: hidden;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.92em;
       line-height: 1.55;
       color: #e6edf3;
       tab-size: 4;
       -moz-tab-size: 4;
-      white-space: pre !important;
-      word-break: normal !important;
-      word-wrap: normal !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      word-wrap: break-word;
     }
     .markdown-content code {
       background: rgba(59, 130, 246, 0.15);
@@ -460,9 +469,10 @@ export class RemoteCompanionServer {
       color: inherit !important;
       font-family: inherit !important;
       font-size: inherit !important;
-      white-space: pre !important;
-      word-break: normal !important;
-      word-wrap: normal !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      word-wrap: break-word;
     }
     .markdown-content ul, .markdown-content ol { padding-left: 20px; margin: 6px 0; }
     .markdown-content blockquote {

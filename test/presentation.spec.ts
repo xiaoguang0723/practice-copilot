@@ -23,6 +23,34 @@ describe('answer presentation', () => {
     expect(codeRule).toContain('overflow-wrap: anywhere')
   })
 
+  it('keeps the remote mobile status row readable on narrow screens', () => {
+    const styles = readProjectFile('electron/remote-server.ts')
+    const panelStateRule = cssRule(styles, '.panel-state')
+    const panelStateItemRule = cssRule(styles, '.panel-state span')
+    const headerRule = cssRule(styles, 'header')
+
+    expect(headerRule).toContain('display: grid')
+    expect(headerRule).toContain('grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto')
+    expect(panelStateRule).toContain('grid-column: 1 / -1')
+    expect(panelStateRule).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    expect(panelStateRule).toContain('white-space: normal')
+    expect(panelStateItemRule).toContain('overflow-wrap: anywhere')
+    expect(panelStateItemRule).toContain('text-overflow: clip')
+  })
+
+  it('wraps remote code blocks instead of requiring horizontal scrolling', () => {
+    const styles = readProjectFile('electron/remote-server.ts')
+    const preRule = cssRule(styles, '.markdown-content pre')
+    const codeRule = cssRule(styles, '.markdown-content pre code')
+
+    expect(preRule).toContain('max-width: 100%')
+    expect(preRule).toContain('overflow-x: hidden')
+    expect(preRule).toContain('white-space: pre-wrap')
+    expect(preRule).toContain('overflow-wrap: anywhere')
+    expect(codeRule).toContain('white-space: pre-wrap')
+    expect(codeRule).toContain('overflow-wrap: anywhere')
+  })
+
   it('documents non-activating display and answer scrolling shortcuts', () => {
     const readme = readProjectFile('README.md')
 

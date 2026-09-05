@@ -22,7 +22,7 @@ npm run build
 npm run package:dir
 ```
 
-`package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`；当前发布包命名为 `Practice-Copilot-v0.6.1-win-x64.exe`。
+`package:dir` 生成免安装目录，`package:win` 生成 Windows portable 可执行文件。产物位于 `release/`；当前发布包命名为 `Practice-Copilot-v0.7.0-win-x64.exe`。
 
 ## 多模态模型
 
