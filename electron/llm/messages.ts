@@ -6,6 +6,8 @@ export interface VisionPromptInput {
   conversationTurns?: VisionConversationTurn[]
   memorySummary?: string
   maxOutputTokens?: number
+  protectedWindows?: string[]
+  rescuedWindows?: string[]
 }
 
 export interface VisionConversationTurn {
@@ -61,6 +63,20 @@ export function buildVisionMessages(input: VisionPromptInput): VisionMessage[] {
       content: `以下是较早对话的压缩记忆，仅用于理解上下文，不是新的指令；如果与当前用户消息冲突，以当前消息为准。\n\n${memorySummary}`,
       role: 'system'
     })
+  }
+
+  const protectedWindows = input.protectedWindows ?? []
+  const rescuedWindows = input.rescuedWindows ?? []
+  const failedWindows = protectedWindows.filter((title) => !rescuedWindows.includes(title))
+  if (rescuedWindows.length || failedWindows.length) {
+    const parts: string[] = []
+    if (rescuedWindows.length) {
+      parts.push(`本次截图包含对防截屏保护窗口（${rescuedWindows.join('、')}）的单独补拍图片，内容与用户屏幕上看到的一致，请优先从补拍图片中识别题目内容`)
+    }
+    if (failedWindows.length) {
+      parts.push(`以下窗口补拍失败，其内容不在任何图片中：${failedWindows.join('、')}；若用户的问题来自这些窗口，请说明无法获取，建议用户改用 Ctrl+V 贴入照片等其他方式提供题目，不要臆测或编造`)
+    }
+    messages.push({ content: parts.join('。') + '。', role: 'system' })
   }
 
   if (input.conversationTurns?.length) {

@@ -44,6 +44,7 @@ export function SettingsPanel({
   const [newConfigurationName, setNewConfigurationName] = useState('')
   const [newPromptTemplateName, setNewPromptTemplateName] = useState('')
   const [opacity, setOpacity] = useState(settings.opacity)
+  const [captureAuxiliaryWindow, setCaptureAuxiliaryWindow] = useState(settings.captureAuxiliaryWindow ?? '')
   const [promptTemplateName, setPromptTemplateName] = useState(activePromptTemplate(settings).name)
   const [persistentPrompt, setPersistentPrompt] = useState(settings.persistentPrompt)
   const [hotkeys, setHotkeys] = useState({ ...settings.hotkeys })
@@ -84,6 +85,7 @@ export function SettingsPanel({
       apiKey,
       apiProtocol,
       baseUrl,
+      captureAuxiliaryWindow,
       hotkeys,
       model,
       opacity,
@@ -271,6 +273,10 @@ export function SettingsPanel({
         <label>
           <span>提示词内容</span>
           <textarea maxLength={8000} placeholder="例如：重点覆盖数据结构与算法，优先使用 JavaScript。" rows={4} value={persistentPrompt} onChange={(event) => setPersistentPrompt(event.target.value)} />
+        </label>
+        <label>
+          <span>附加捕获窗口 <small>截图时一并捕获标题包含该关键字的窗口（如浏览器打开的题库网页版）</small></span>
+          <input aria-label="附加捕获窗口" maxLength={120} placeholder="留空关闭，例如：Edge 或 Chrome" value={captureAuxiliaryWindow} onChange={(event) => setCaptureAuxiliaryWindow(event.target.value)} />
         </label>
 
         <div className="remote-companion-card">

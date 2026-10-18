@@ -158,7 +158,7 @@ describe('App hotkey scrolling', () => {
         start: vi.fn()
       },
       app: { quit: vi.fn() },
-      capture: { primary: vi.fn() },
+      capture: { importImage: vi.fn(), importImageFile: vi.fn(), primary: vi.fn() },
       conversation: { clear: vi.fn() },
       hotkeys: {
         onAction: vi.fn((callback) => {
@@ -215,7 +215,7 @@ describe('App hotkey scrolling', () => {
         start: vi.fn()
       },
       app: { quit: vi.fn() },
-      capture: { primary: vi.fn() },
+      capture: { importImage: vi.fn(), importImageFile: vi.fn(), primary: vi.fn() },
       conversation: { clear: vi.fn() },
       hotkeys: {
         onAction: vi.fn((callback) => {

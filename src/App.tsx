@@ -49,6 +49,34 @@ export function App() {
     }
   }, [])
 
+  const importImageFile = useCallback(async () => {
+    try {
+      const result = await window.practice.capture.importImageFile()
+      if (result) dispatch({ result, type: 'capture-success' })
+    } catch (error) {
+      dispatch({ message: errorMessage(error), type: 'local-error' })
+    }
+  }, [])
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const image = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith('image/'))
+      if (!image) return
+      event.preventDefault()
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (typeof reader.result !== 'string') return
+        void window.practice.capture
+          .importImage(reader.result)
+          .then((result) => dispatch({ result, type: 'capture-success' }))
+          .catch((error) => dispatch({ message: errorMessage(error), type: 'local-error' }))
+      }
+      reader.readAsDataURL(image)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [])
+
   const answer = useCallback(async () => {
     try {
       const isRemoteOnly = Boolean(
@@ -145,6 +173,9 @@ export function App() {
         second: '2-digit'
       })
     : undefined
+  const protectedWindowTitles = state.capture?.protectedWindows ?? []
+  const rescuedWindowTitles = state.capture?.rescuedWindows ?? []
+  const missingWindowTitles = protectedWindowTitles.filter((title) => !rescuedWindowTitles.includes(title))
 
   return (
     <main className={`app-shell ${isGhostMode ? 'ghost-mode' : ''}`}>
@@ -154,7 +185,11 @@ export function App() {
           <strong>Practice Copilot</strong>
           {settings && <span className="configuration-badge">{settings.apiConfigurations.find((configuration) => configuration.id === settings.activeApiConfigurationId)?.name}</span>}
           {settings && <span className="prompt-template-badge">提示词：{settings.promptTemplates.find((template) => template.id === settings.activePromptTemplateId)?.name}</span>}
-          <span>{captureStatus ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}` : '左键双击截图 · 右键双击发送'}</span>
+          <span title={protectedWindowTitles.length ? (rescuedWindowTitles.length ? `已补拍防截屏窗口内容：${rescuedWindowTitles.join('、')}${missingWindowTitles.length ? `；仍缺失：${missingWindowTitles.join('、')}` : ''}` : `以下窗口处于防截屏保护，截图中不含其内容：${missingWindowTitles.join('、')}`) : undefined}>
+            {captureStatus
+              ? `已捕获 ${state.capture?.count} 张 · ${captureStatus}${rescuedWindowTitles.length ? ` · ✓ 已补拍 ${rescuedWindowTitles.join('、')}` : ''}${missingWindowTitles.length ? ` · ⚠ 缺失防截屏窗口 ${missingWindowTitles.join('、')}` : ''}`
+              : '左键双击截图 · 右键双击发送 · Ctrl+V 贴入图片'}
+          </span>
         </div>
         <div className="title-actions">
           <button aria-label="新建对话" className="icon-button" onClick={() => void clearConversation()}>
@@ -162,6 +197,9 @@ export function App() {
           </button>
           <button aria-label="打开知识库" className="icon-button" onClick={() => setShowKnowledge(true)}>
             K
+          </button>
+          <button aria-label="导入图片" className="icon-button" onClick={() => void importImageFile()}>
+            📷
           </button>
           <button aria-label="打开设置" className="icon-button" onClick={() => setShowSettings(true)}>
             ⚙

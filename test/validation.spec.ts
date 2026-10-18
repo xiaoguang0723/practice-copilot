@@ -57,5 +57,13 @@ describe('validateSettingsPatch', () => {
       ok: false
     })
   })
+
+  it('rejects an oversized auxiliary capture window keyword', () => {
+    expect(validateSettingsPatch({ captureAuxiliaryWindow: 'x'.repeat(121) })).toEqual({
+      message: '附加捕获窗口关键字不能超过 120 个字符',
+      ok: false
+    })
+    expect(validateSettingsPatch({ captureAuxiliaryWindow: 'VMware' })).toEqual({ ok: true })
+  })
 })
 

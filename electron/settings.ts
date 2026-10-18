@@ -31,6 +31,7 @@ interface LegacySettingsFile {
   apiKeyEncrypted?: string
   apiProtocol?: 'chat' | 'response'
   baseUrl?: string
+  captureAuxiliaryWindow?: string
   hotkeys?: HotkeySettings
   knowledgeBaseEnabled?: boolean
   model?: string
@@ -52,6 +53,7 @@ interface SettingsFile {
   activeApiConfigurationId: string
   activePromptTemplateId: string
   apiConfigurations: StoredApiConfiguration[]
+  captureAuxiliaryWindow: string
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
   opacity: number
@@ -74,6 +76,7 @@ function defaultFile(): SettingsFile {
       model: configuration.model,
       name: configuration.name
     }],
+    captureAuxiliaryWindow: defaults.captureAuxiliaryWindow,
     hotkeys: { ...defaults.hotkeys },
     knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
     opacity: defaults.opacity,
@@ -107,6 +110,7 @@ export class SettingsStore {
       apiKeySet: Boolean(active.apiKeyEncrypted),
       apiProtocol: active.apiProtocol,
       baseUrl: active.baseUrl,
+      captureAuxiliaryWindow: this.data.captureAuxiliaryWindow,
       hotkeys: { ...this.data.hotkeys },
       knowledgeBaseEnabled: this.data.knowledgeBaseEnabled,
       model: active.model,
@@ -137,6 +141,7 @@ export class SettingsStore {
     if (patch.apiProtocol !== undefined) active.apiProtocol = patch.apiProtocol
     if (patch.baseUrl !== undefined) active.baseUrl = normalizeBaseUrl(patch.baseUrl)
     if (patch.model !== undefined) active.model = patch.model.trim()
+    if (patch.captureAuxiliaryWindow !== undefined) this.data.captureAuxiliaryWindow = patch.captureAuxiliaryWindow.trim()
     if (patch.opacity !== undefined) this.data.opacity = patch.opacity
     if (patch.persistentPrompt !== undefined) this.activePromptTemplate().content = patch.persistentPrompt
     if (patch.promptTemplateName !== undefined) this.activePromptTemplate().name = this.validateName(patch.promptTemplateName)
@@ -337,6 +342,9 @@ export class SettingsStore {
         ? activeId
         : configurations[0].id,
       apiConfigurations: configurations,
+      captureAuxiliaryWindow: typeof raw.captureAuxiliaryWindow === 'string'
+        ? raw.captureAuxiliaryWindow.trim().slice(0, 120)
+        : defaults.captureAuxiliaryWindow,
       hotkeys: raw.version === undefined || Number(raw.version) <= 2
         ? migrateDefaultHotkeys({ ...defaults.hotkeys, ...(raw.hotkeys ?? {}) })
         : { ...defaults.hotkeys, ...(raw.hotkeys ?? {}) },

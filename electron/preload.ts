@@ -22,6 +22,8 @@ const api: PracticeApi = {
     quit: () => ipcRenderer.invoke(IPC.APP_QUIT)
   },
   capture: {
+    importImage: (dataUrl) => ipcRenderer.invoke(IPC.CAPTURE_IMPORT_IMAGE, dataUrl),
+    importImageFile: () => ipcRenderer.invoke(IPC.CAPTURE_IMPORT_IMAGE_FILE),
     primary: () => ipcRenderer.invoke(IPC.CAPTURE_PRIMARY)
   },
   conversation: {

@@ -10,10 +10,14 @@ describe('AppCoordinator', () => {
       capture: async () => {
         captureCount += 1
         return {
-          capturedAt: captureCount,
-          dataUrl: `data:image/jpeg;base64,${captureCount}`,
-          height: 1080,
-          width: 1920
+          protectedWindows: [],
+          rescuedWindows: [],
+          screens: [{
+            capturedAt: captureCount,
+            dataUrl: `data:image/jpeg;base64,${captureCount}`,
+            height: 1080,
+            width: 1920
+          }]
         }
       },
       emitAnswer: vi.fn(),
@@ -59,10 +63,14 @@ describe('AppCoordinator', () => {
     const signals: AbortSignal[] = []
     const coordinator = new AppCoordinator({
       capture: async () => ({
-        capturedAt: 1,
-        dataUrl: 'data:image/jpeg;base64,abc',
-        height: 1080,
-        width: 1920
+        protectedWindows: [],
+        rescuedWindows: [],
+        screens: [{
+          capturedAt: 1,
+          dataUrl: 'data:image/jpeg;base64,abc',
+          height: 1080,
+          width: 1920
+        }]
       }),
       emitAnswer: vi.fn(),
       quit: vi.fn(),
@@ -140,10 +148,14 @@ describe('AppCoordinator', () => {
     const streamedInputs: Array<{ knowledgeContext?: string }> = []
     const coordinator = new AppCoordinator({
       capture: async () => ({
-        capturedAt: 1,
-        dataUrl: 'data:image/jpeg;base64,abc',
-        height: 1080,
-        width: 1920
+        protectedWindows: [],
+        rescuedWindows: [],
+        screens: [{
+          capturedAt: 1,
+          dataUrl: 'data:image/jpeg;base64,abc',
+          height: 1080,
+          width: 1920
+        }]
       }),
       emitAnswer: vi.fn(),
       quit: vi.fn(),
@@ -177,10 +189,14 @@ describe('AppCoordinator', () => {
     let captureCount = 0
     const coordinator = new AppCoordinator({
       capture: async () => ({
-        capturedAt: ++captureCount,
-        dataUrl: `data:image/jpeg;base64,${captureCount}`,
-        height: 1,
-        width: 1
+        protectedWindows: [],
+        rescuedWindows: [],
+        screens: [{
+          capturedAt: ++captureCount,
+          dataUrl: `data:image/jpeg;base64,${captureCount}`,
+          height: 1,
+          width: 1
+        }]
       }),
       emitAnswer: vi.fn(),
       quit: vi.fn(),
@@ -192,6 +208,92 @@ describe('AppCoordinator', () => {
     expect((await coordinator.capturePrimary()).count).toBe(2)
     coordinator.clearConversation()
     expect((await coordinator.capturePrimary()).count).toBe(1)
+  })
+
+  it('imports pasted images into the pending capture batch', async () => {
+    const coordinator = new AppCoordinator({
+      capture: vi.fn(),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      stream: vi.fn(async () => 'ok'),
+      unregisterHotkeys: vi.fn()
+    })
+
+    const first = coordinator.importImage({
+      capturedAt: 10,
+      dataUrl: 'data:image/jpeg;base64,photo1',
+      height: 3000,
+      width: 4000
+    })
+    expect(first.count).toBe(1)
+    expect(first.capturedAt).toBe(10)
+
+    const second = coordinator.importImage({
+      capturedAt: 20,
+      dataUrl: 'data:image/jpeg;base64,photo2',
+      height: 1080,
+      width: 1920
+    })
+    expect(second.count).toBe(2)
+
+    const streamedInputs: Array<{ imageDataUrls: string[] }> = []
+    const streaming = new AppCoordinator({
+      capture: vi.fn(),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      stream: async (input) => {
+        streamedInputs.push(input)
+        return 'ok'
+      },
+      unregisterHotkeys: vi.fn()
+    })
+    streaming.importImage({ capturedAt: 1, dataUrl: 'data:image/jpeg;base64,photo', height: 1, width: 1 })
+    streaming.startAnswer({
+      apiKey: 'key', baseUrl: 'https://example.com/v1', model: 'vision', persistentPrompt: '', userText: '这题选什么'
+    })
+    await vi.waitFor(() => expect(streamedInputs).toHaveLength(1))
+    expect(streamedInputs[0].imageDataUrls).toEqual(['data:image/jpeg;base64,photo'])
+  })
+
+  it('reports rescued and failed protected windows and forwards them to the model input once', async () => {
+    const streamedInputs: Array<{ protectedWindows?: string[]; rescuedWindows?: string[] }> = []
+    const coordinator = new AppCoordinator({
+      capture: async () => ({
+        protectedWindows: ['国考云考试系统', '另一个保护窗口'],
+        rescuedWindows: ['国考云考试系统'],
+        screens: [{
+          capturedAt: 1,
+          dataUrl: 'data:image/jpeg;base64,abc',
+          height: 1080,
+          width: 1920
+        }]
+      }),
+      emitAnswer: vi.fn(),
+      quit: vi.fn(),
+      stream: async (input) => {
+        streamedInputs.push(input)
+        return 'ok'
+      },
+      unregisterHotkeys: vi.fn()
+    })
+
+    const result = await coordinator.capturePrimary()
+    expect(result.protectedWindows).toEqual(['国考云考试系统', '另一个保护窗口'])
+    expect(result.rescuedWindows).toEqual(['国考云考试系统'])
+
+    coordinator.startAnswer({
+      apiKey: 'key', baseUrl: 'https://example.com/v1', model: 'vision', persistentPrompt: '', userText: '这题选什么'
+    })
+    await vi.waitFor(() => expect(streamedInputs).toHaveLength(1))
+    expect(streamedInputs[0].protectedWindows).toEqual(['国考云考试系统', '另一个保护窗口'])
+    expect(streamedInputs[0].rescuedWindows).toEqual(['国考云考试系统'])
+
+    coordinator.startAnswer({
+      apiKey: 'key', baseUrl: 'https://example.com/v1', model: 'vision', persistentPrompt: '', userText: '下一题'
+    })
+    await vi.waitFor(() => expect(streamedInputs).toHaveLength(2))
+    expect(streamedInputs[1].protectedWindows).toEqual([])
+    expect(streamedInputs[1].rescuedWindows).toEqual([])
   })
 
   it('summarizes the first ten turns before sending the eleventh turn', async () => {

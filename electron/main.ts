@@ -4,8 +4,10 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  dialog,
   globalShortcut,
   ipcMain,
+  nativeImage,
   safeStorage,
   screen,
   type Rectangle
@@ -13,7 +15,7 @@ import {
 
 import { IPC, type HotkeyAction, type RemotePanelState, type SettingsPatch } from '../shared/protocol'
 import { validateSettingsPatch } from '../shared/validation'
-import { capturePrimaryDisplay } from './capture'
+import { captureScreen } from './capture'
 import { AppCoordinator } from './coordinator'
 import { registerHotkeys } from './hotkeys'
 import { streamVisionAnswer } from './llm/client'
@@ -138,7 +140,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const coordinator = new AppCoordinator({
-    capture: capturePrimaryDisplay,
+    capture: () => captureScreen({ auxiliaryWindow: settings.getPublic().captureAuxiliaryWindow }),
     emitAnswer: (event) => {
       const current = settings.getPublic()
       if (!current.remoteCompanion.enabled || current.remoteCompanion.outputTarget !== 'remote-only') {
@@ -361,6 +363,35 @@ async function bootstrap(): Promise<void> {
     captureCount = result.count
     remoteServer.setPanelState(getRemotePanelState())
     return result
+  })
+  const importImageBuffer = (image: Electron.NativeImage) => {
+    if (image.isEmpty()) throw new Error('无法读取图片')
+    const size = image.getSize()
+    const normalized = size.width > 2000 ? image.resize({ width: 2000, quality: 'good' }) : image
+    const jpeg = normalized.toJPEG(85)
+    const result = coordinator.importImage({
+      capturedAt: Date.now(),
+      dataUrl: `data:image/jpeg;base64,${jpeg.toString('base64')}`,
+      height: normalized.getSize().height,
+      width: normalized.getSize().width
+    })
+    captureCount = result.count
+    remoteServer.setPanelState(getRemotePanelState())
+    return result
+  }
+  ipcMain.handle(IPC.CAPTURE_IMPORT_IMAGE, (_event, dataUrl: unknown) => {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/') || dataUrl.length > 60_000_000) {
+      throw new Error('图片数据无效')
+    }
+    return importImageBuffer(nativeImage.createFromDataURL(dataUrl))
+  })
+  ipcMain.handle(IPC.CAPTURE_IMPORT_IMAGE_FILE, async () => {
+    const picked = await dialog.showOpenDialog(window, {
+      filters: [{ extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'], name: '图片' }],
+      properties: ['openFile']
+    })
+    if (picked.canceled || !picked.filePaths.length) return null
+    return importImageBuffer(nativeImage.createFromPath(picked.filePaths[0]))
   })
   ipcMain.handle(IPC.ANSWER_START, (_event, input: { text?: unknown }) => {
     if (typeof input?.text !== 'string' || input.text.length > 8000) {

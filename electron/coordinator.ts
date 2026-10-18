@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import type { AnswerEvent, CaptureResult } from '../shared/protocol'
-import type { CapturedScreen } from './capture'
+import type { CaptureBatch, CapturedScreen } from './capture'
 import type { StreamVisionOptions } from './llm/client'
 
 const MAX_CAPTURE_COUNT = 5
@@ -12,6 +12,8 @@ interface StoredTurn {
   assistantText?: string
   id: string
   imageDataUrls: string[]
+  protectedWindows: string[]
+  rescuedWindows: string[]
   status: 'complete' | 'error' | 'streaming'
   userText: string
 }
@@ -22,7 +24,7 @@ type AnswerInput = Omit<StreamVisionOptions, 'conversationTurns' | 'extraPrompt'
 }
 
 export interface CoordinatorDependencies {
-  capture(): Promise<CapturedScreen>
+  capture(): Promise<CaptureBatch>
   emitAnswer(event: AnswerEvent): void
   quit(): void
   retrieve?(input: StreamVisionOptions, signal: AbortSignal): Promise<string | undefined>
@@ -38,6 +40,8 @@ export interface CoordinatorDependencies {
 export class AppCoordinator {
   private active?: { controller: AbortController; requestId: string; turnId: string }
   private captures: CapturedScreen[] = []
+  private pendingProtectedWindows: string[] = []
+  private pendingRescuedWindows: string[] = []
   private shuttingDown = false
   private summary = ''
   private turns: StoredTurn[] = []
@@ -45,10 +49,35 @@ export class AppCoordinator {
   constructor(private readonly dependencies: CoordinatorDependencies) {}
 
   async capturePrimary(): Promise<CaptureResult> {
-    const captured = await this.dependencies.capture()
-    this.captures = [...this.captures, captured].slice(-MAX_CAPTURE_COUNT)
-    const { capturedAt, height, width } = captured
-    return { capturedAt, count: this.captures.length, height, width }
+    const batch = await this.dependencies.capture()
+    this.captures = [...this.captures, ...batch.screens].slice(-MAX_CAPTURE_COUNT)
+    for (const title of batch.protectedWindows) {
+      if (!this.pendingProtectedWindows.includes(title)) this.pendingProtectedWindows.push(title)
+    }
+    for (const title of batch.rescuedWindows) {
+      if (!this.pendingRescuedWindows.includes(title)) this.pendingRescuedWindows.push(title)
+    }
+    const { capturedAt, height, width } = batch.screens[0]
+    return {
+      capturedAt,
+      count: this.captures.length,
+      height,
+      protectedWindows: [...this.pendingProtectedWindows],
+      rescuedWindows: [...this.pendingRescuedWindows],
+      width
+    }
+  }
+
+  importImage(screen: CapturedScreen): CaptureResult {
+    this.captures = [...this.captures, screen].slice(-MAX_CAPTURE_COUNT)
+    return {
+      capturedAt: screen.capturedAt,
+      count: this.captures.length,
+      height: screen.height,
+      protectedWindows: [...this.pendingProtectedWindows],
+      rescuedWindows: [...this.pendingRescuedWindows],
+      width: screen.width
+    }
   }
 
   clearConversation(): void {
@@ -56,6 +85,8 @@ export class AppCoordinator {
     this.turns = []
     this.summary = ''
     this.captures = []
+    this.pendingProtectedWindows = []
+    this.pendingRescuedWindows = []
   }
 
   startAnswer(input: AnswerInput): { requestId: string; turnId: string } {
@@ -70,11 +101,15 @@ export class AppCoordinator {
     const turn: StoredTurn = {
       id: turnId,
       imageDataUrls: this.captures.map((capture) => capture.dataUrl),
+      protectedWindows: [...this.pendingProtectedWindows],
+      rescuedWindows: [...this.pendingRescuedWindows],
       status: 'streaming',
       userText
     }
     this.turns = [...this.turns, turn]
     this.captures = []
+    this.pendingProtectedWindows = []
+    this.pendingRescuedWindows = []
 
     const controller = new AbortController()
     this.active = { controller, requestId, turnId }
@@ -156,7 +191,9 @@ export class AppCoordinator {
         })),
         extraPrompt: userText,
         imageDataUrls: currentTurn.imageDataUrls,
-        memorySummary: this.summary
+        memorySummary: this.summary,
+        protectedWindows: currentTurn.protectedWindows,
+        rescuedWindows: currentTurn.rescuedWindows
       }
       if (
         input.knowledgeBaseEnabled &&

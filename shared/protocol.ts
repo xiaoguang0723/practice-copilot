@@ -48,6 +48,7 @@ export interface PublicSettings {
   apiKeySet: boolean
   apiProtocol: 'chat' | 'response'
   baseUrl: string
+  captureAuxiliaryWindow: string
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
   model: string
@@ -63,6 +64,7 @@ export interface SettingsPatch {
   apiKey?: string
   apiProtocol?: 'chat' | 'response'
   baseUrl?: string
+  captureAuxiliaryWindow?: string
   hotkeys?: Partial<HotkeySettings>
   knowledgeBaseEnabled?: boolean
   model?: string
@@ -82,6 +84,8 @@ export interface CaptureResult {
   capturedAt: number
   count: number
   height: number
+  protectedWindows?: string[]
+  rescuedWindows?: string[]
   width: number
 }
 export interface KnowledgeBaseSummary { createdAt: number; id: string; name: string; updatedAt: number }
@@ -112,6 +116,8 @@ export const IPC = {
   ANSWER_START: 'answer:start',
   CONVERSATION_CLEAR: 'conversation:clear',
   APP_QUIT: 'app:quit',
+  CAPTURE_IMPORT_IMAGE: 'capture:import-image',
+  CAPTURE_IMPORT_IMAGE_FILE: 'capture:import-image-file',
   CAPTURE_PRIMARY: 'capture:primary',
   HOTKEY_ACTION: 'hotkeys:action',
   HOTKEY_RECORD: 'hotkeys:record',
@@ -147,6 +153,8 @@ export interface PracticeApi {
     quit(): Promise<void>
   }
   capture: {
+    importImage(dataUrl: string): Promise<CaptureResult>
+    importImageFile(): Promise<CaptureResult | null>
     primary(): Promise<CaptureResult>
   }
   conversation: {
@@ -215,6 +223,7 @@ export function createDefaultSettings(): PublicSettings {
     apiKeySet: false,
     apiProtocol: 'chat',
     baseUrl: 'https://api.openai.com/v1',
+    captureAuxiliaryWindow: '',
     hotkeys: {
       answer: 'MouseRightDoubleClick',
       capture: 'MouseLeftDoubleClick',
