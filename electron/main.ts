@@ -99,13 +99,20 @@ async function bootstrap(): Promise<void> {
       sandbox: true
     }
   })
-  window.setAlwaysOnTop(true, 'screen-saver')
+  window.setAlwaysOnTop(true, 'pop-up-menu', 1)
   window.setContentProtection(true)
   window.setOpacity(settings.getPublic().opacity)
   window.setSkipTaskbar(true)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   window.once('ready-to-show', () => showWithoutActivation(window))
+
+  // 定期强制刷新置顶层级，对抗全屏独占软件的层级抢占
+  setInterval(() => {
+    if (!window.isDestroyed() && window.isVisible()) {
+      window.setAlwaysOnTop(true, 'pop-up-menu', 1)
+    }
+  }, 1000)
 
   const hideWindow = () => {
     window.hide()
@@ -208,6 +215,22 @@ async function bootstrap(): Promise<void> {
     else if (action === 'toggle') toggleWindow()
     else if (action === 'configuration-next') activateNextApiConfiguration()
     else if (action === 'prompt-template-next') activateNextPromptTemplate()
+    else if (action === 'capture') {
+      void coordinator.capturePrimary().then((result) => {
+        captureCount = result.count
+        remoteServer.setPanelState(getRemotePanelState())
+        window.webContents.send(IPC.CAPTURE_PUSHED, result)
+      }).catch((error) => {
+        console.error('capture failed:', error)
+      })
+    }
+    else if (action === 'answer') {
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+    }
+    else if (action === 'clear') {
+      clearConversation()
+      window.webContents.send(IPC.CONVERSATION_CLEARED)
+    }
     else if (action === 'pointer-through') {
       pointerThrough = !pointerThrough
       setPointerThrough(window, pointerThrough)

@@ -114,7 +114,9 @@ export const IPC = {
   ANSWER_CANCEL: 'answer:cancel',
   ANSWER_EVENT: 'answer:event',
   ANSWER_START: 'answer:start',
+  CAPTURE_PUSHED: 'capture:pushed',
   CONVERSATION_CLEAR: 'conversation:clear',
+  CONVERSATION_CLEARED: 'conversation:cleared',
   APP_QUIT: 'app:quit',
   CAPTURE_IMPORT_IMAGE: 'capture:import-image',
   CAPTURE_IMPORT_IMAGE_FILE: 'capture:import-image-file',
@@ -155,10 +157,12 @@ export interface PracticeApi {
   capture: {
     importImage(dataUrl: string): Promise<CaptureResult>
     importImageFile(): Promise<CaptureResult | null>
+    onPushed(callback: (result: CaptureResult) => void): () => void
     primary(): Promise<CaptureResult>
   }
   conversation: {
     clear(): Promise<void>
+    onCleared(callback: () => void): () => void
   }
   hotkeys: {
     onAction(callback: (action: HotkeyAction) => void): () => void

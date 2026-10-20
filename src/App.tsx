@@ -148,6 +148,13 @@ export function App() {
         }, 200)
       }
     })
+    const removeCapturePushedListener = window.practice.capture.onPushed((result) => {
+      dispatch({ result, type: 'capture-success' })
+    })
+    const removeClearedListener = window.practice.conversation.onCleared(() => {
+      setMessage('')
+      dispatch({ type: 'conversation-clear' })
+    })
     const removeSettingsListener = window.practice.settings.onChange((nextSettings) => {
       setSettings(nextSettings)
       setMessage('')
@@ -156,6 +163,8 @@ export function App() {
     return () => {
       removeAnswerListener()
       removeHotkeyListener()
+      removeCapturePushedListener()
+      removeClearedListener()
       removeSettingsListener()
     }
   }, [answer, capture, clearConversation])

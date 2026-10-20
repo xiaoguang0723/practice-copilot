@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
   type AnswerEvent,
+  type CaptureResult,
   type HotkeyAction,
   type PublicSettings,
   type PracticeApi
@@ -24,10 +25,20 @@ const api: PracticeApi = {
   capture: {
     importImage: (dataUrl) => ipcRenderer.invoke(IPC.CAPTURE_IMPORT_IMAGE, dataUrl),
     importImageFile: () => ipcRenderer.invoke(IPC.CAPTURE_IMPORT_IMAGE_FILE),
+    onPushed: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, result: CaptureResult) => callback(result)
+      ipcRenderer.on(IPC.CAPTURE_PUSHED, listener)
+      return () => ipcRenderer.removeListener(IPC.CAPTURE_PUSHED, listener)
+    },
     primary: () => ipcRenderer.invoke(IPC.CAPTURE_PRIMARY)
   },
   conversation: {
-    clear: () => ipcRenderer.invoke(IPC.CONVERSATION_CLEAR)
+    clear: () => ipcRenderer.invoke(IPC.CONVERSATION_CLEAR),
+    onCleared: (callback) => {
+      const listener = () => callback()
+      ipcRenderer.on(IPC.CONVERSATION_CLEARED, listener)
+      return () => ipcRenderer.removeListener(IPC.CONVERSATION_CLEARED, listener)
+    }
   },
   hotkeys: {
     onAction: (callback) => {
