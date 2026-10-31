@@ -1,4 +1,4 @@
-import { normalizeApiUrl } from '../../shared/validation'
+import { normalizeApiUrl, normalizeTranscriptionsUrl } from '../../shared/validation'
 import {
   buildResponsesConversationInput,
   buildVisionMessages,
@@ -10,6 +10,19 @@ import { parseSseStream } from './sse'
 
 const ANSWER_IDLE_TIMEOUT_MS = 5 * 60_000
 const RETRIEVAL_IDLE_TIMEOUT_MS = 2 * 60_000
+const TRANSCRIPTION_IDLE_TIMEOUT_MS = 30_000
+
+const WHISPER_HALLUCINATION_PATTERNS = [
+  /^字幕由\s*amara\.org/i,
+  /^amara\.org/i,
+  /^请不吝点赞\s*订阅/,
+  /^谢谢观看$/,
+  /^感谢观看$/,
+  /^thank you for watching\.?$/i,
+  /^subtitles by/i,
+  /^you$/i,
+  /^\.+$/
+]
 
 export interface StreamVisionOptions extends VisionPromptInput {
   apiKey: string
@@ -18,6 +31,13 @@ export interface StreamVisionOptions extends VisionPromptInput {
   knowledgeBaseEnabled?: boolean
   model: string
   selectedKnowledgeBaseIds?: string[]
+}
+
+export interface TranscribeAudioOptions {
+  apiKey: string
+  baseUrl: string
+  sttModel: string
+  wavBase64: string
 }
 
 export interface RequestSignal {
@@ -45,6 +65,60 @@ export function createRequestSignal(
       if (!parent.aborted && !timeoutController.signal.aborted) armTimer()
     },
     timedOut: () => timeoutController.signal.aborted && !parent.aborted
+  }
+}
+
+export async function transcribeAudioChunk(
+  options: TranscribeAudioOptions,
+  signal: AbortSignal
+): Promise<string> {
+  const request = createRequestSignal(signal, TRANSCRIPTION_IDLE_TIMEOUT_MS)
+  try {
+    const targetUrl = normalizeTranscriptionsUrl(options.baseUrl)
+    const wavBytes = Buffer.from(options.wavBase64, 'base64')
+    const formData = new FormData()
+    const blob = new Blob([wavBytes], { type: 'audio/wav' })
+    formData.append('file', blob, 'speech.wav')
+    formData.append('model', options.sttModel.trim() || 'gpt-4o-mini-transcribe')
+    formData.append('response_format', 'json')
+    formData.append('temperature', '0')
+
+    const response = await fetch(targetUrl, {
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${options.apiKey}`
+      },
+      method: 'POST',
+      signal: request.signal
+    })
+
+    if (!response.ok) {
+      const detail = await extractErrorDetail(response, options.apiKey)
+      throw new Error(detail)
+    }
+    request.touch()
+
+    const rawText = await response.text()
+    let text = rawText.trim()
+    try {
+      const parsed = JSON.parse(rawText) as { text?: unknown }
+      if (typeof parsed.text === 'string') {
+        text = parsed.text.trim()
+      }
+    } catch {
+      // Plain text response format
+    }
+
+    if (!text) return ''
+    if (WHISPER_HALLUCINATION_PATTERNS.some((pattern) => pattern.test(text))) {
+      return ''
+    }
+    return text
+  } catch (error) {
+    if (request.timedOut()) throw new Error('语音转文字请求超时')
+    throw error
+  } finally {
+    request.dispose()
   }
 }
 

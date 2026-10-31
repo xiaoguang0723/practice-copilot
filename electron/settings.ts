@@ -12,6 +12,8 @@ import {
 } from '../shared/protocol'
 import { normalizeBaseUrl, validateSettingsPatch } from '../shared/validation'
 
+const BUILTIN_STT_API_KEY = 'sk-wKkhSZjdZIlR28fNWRnMwNQNnceB9oX2O9LMYx3dCBfSVSMb'
+
 export interface SecretCipher {
   available(): boolean
   decrypt(encrypted: string): string
@@ -25,6 +27,7 @@ interface StoredApiConfiguration {
   id: string
   model: string
   name: string
+  sttModel: string
 }
 
 interface LegacySettingsFile {
@@ -39,6 +42,9 @@ interface LegacySettingsFile {
   promptTemplates?: StoredPromptTemplate[]
   activePromptTemplateId?: string
   selectedKnowledgeBaseIds?: string[]
+  sttApiKeyEncrypted?: string
+  sttBaseUrl?: string
+  sttModel?: string
   version?: number
 }
 
@@ -58,6 +64,9 @@ interface SettingsFile {
   promptTemplates: StoredPromptTemplate[]
   remoteCompanion: RemoteCompanionSettings
   selectedKnowledgeBaseIds: string[]
+  sttApiKeyEncrypted?: string
+  sttBaseUrl: string
+  sttModel: string
   version: 4
 }
 
@@ -72,7 +81,8 @@ function defaultFile(): SettingsFile {
       baseUrl: configuration.baseUrl,
       id: configuration.id,
       model: configuration.model,
-      name: configuration.name
+      name: configuration.name,
+      sttModel: configuration.sttModel
     }],
     hotkeys: { ...defaults.hotkeys },
     knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
@@ -83,6 +93,8 @@ function defaultFile(): SettingsFile {
       token: randomUUID().replace(/-/g, '')
     },
     selectedKnowledgeBaseIds: defaults.selectedKnowledgeBaseIds,
+    sttBaseUrl: defaults.sttBaseUrl,
+    sttModel: defaults.sttModel,
     version: 4
   }
 }
@@ -114,7 +126,10 @@ export class SettingsStore {
       persistentPrompt: this.activePromptTemplate().content,
       promptTemplates: this.data.promptTemplates.map((template) => ({ ...template })),
       remoteCompanion: { ...this.data.remoteCompanion },
-      selectedKnowledgeBaseIds: [...this.data.selectedKnowledgeBaseIds]
+      selectedKnowledgeBaseIds: [...this.data.selectedKnowledgeBaseIds],
+      sttApiKeySet: Boolean(this.data.sttApiKeyEncrypted || BUILTIN_STT_API_KEY),
+      sttBaseUrl: this.data.sttBaseUrl,
+      sttModel: this.data.sttModel
     }
   }
 
@@ -128,6 +143,19 @@ export class SettingsStore {
     }
   }
 
+  getSttApiKey(): string | undefined {
+    const encrypted = this.data.sttApiKeyEncrypted
+    if (encrypted && this.cipher.available()) {
+      try {
+        const decrypted = this.cipher.decrypt(encrypted)
+        if (decrypted) return decrypted
+      } catch {
+        // fall through
+      }
+    }
+    return BUILTIN_STT_API_KEY || this.getApiKey()
+  }
+
   applyPatch(patch: SettingsPatch): PublicSettings {
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) throw new Error(validation.message)
@@ -137,6 +165,11 @@ export class SettingsStore {
     if (patch.apiProtocol !== undefined) active.apiProtocol = patch.apiProtocol
     if (patch.baseUrl !== undefined) active.baseUrl = normalizeBaseUrl(patch.baseUrl)
     if (patch.model !== undefined) active.model = patch.model.trim()
+    if (patch.sttBaseUrl !== undefined) this.data.sttBaseUrl = normalizeBaseUrl(patch.sttBaseUrl)
+    if (patch.sttModel !== undefined) {
+      this.data.sttModel = patch.sttModel.trim()
+      active.sttModel = patch.sttModel.trim()
+    }
     if (patch.opacity !== undefined) this.data.opacity = patch.opacity
     if (patch.persistentPrompt !== undefined) this.activePromptTemplate().content = patch.persistentPrompt
     if (patch.promptTemplateName !== undefined) this.activePromptTemplate().name = this.validateName(patch.promptTemplateName)
@@ -158,6 +191,10 @@ export class SettingsStore {
       if (!this.cipher.available()) throw new Error('系统安全存储不可用，无法保存 API Key')
       active.apiKeyEncrypted = this.cipher.encrypt(patch.apiKey)
     }
+    if (patch.sttApiKey !== undefined && patch.sttApiKey !== '') {
+      if (!this.cipher.available()) throw new Error('系统安全存储不可用，无法保存 STT API Key')
+      this.data.sttApiKeyEncrypted = this.cipher.encrypt(patch.sttApiKey)
+    }
 
     this.persist()
     return this.getPublic()
@@ -177,7 +214,8 @@ export class SettingsStore {
       baseUrl: defaults.baseUrl,
       id: randomUUID(),
       model: defaults.model,
-      name: trimmed
+      name: trimmed,
+      sttModel: this.data.sttModel || defaults.sttModel
     }
     this.data.apiConfigurations.push(configuration)
     this.data.activeApiConfigurationId = configuration.id
@@ -282,7 +320,8 @@ export class SettingsStore {
       baseUrl: configuration.baseUrl,
       id: configuration.id,
       model: configuration.model,
-      name: configuration.name
+      name: configuration.name,
+      sttModel: configuration.sttModel
     }
   }
 
@@ -306,7 +345,8 @@ export class SettingsStore {
             baseUrl: typeof configuration.baseUrl === 'string' ? normalizeBaseUrl(configuration.baseUrl) : defaults.apiConfigurations[0].baseUrl,
             id: typeof configuration.id === 'string' && configuration.id ? configuration.id : randomUUID(),
             model: typeof configuration.model === 'string' && configuration.model.trim() ? configuration.model : defaults.apiConfigurations[0].model,
-            name: typeof configuration.name === 'string' && configuration.name.trim() ? configuration.name.trim().slice(0, 80) : '未命名配置'
+            name: typeof configuration.name === 'string' && configuration.name.trim() ? configuration.name.trim().slice(0, 80) : '未命名配置',
+            sttModel: typeof configuration.sttModel === 'string' && configuration.sttModel.trim() ? configuration.sttModel.trim() : defaults.apiConfigurations[0].sttModel
           }))
         if (configurations.length) return this.completeFile(raw, configurations, raw.activeApiConfigurationId)
       }
@@ -317,7 +357,8 @@ export class SettingsStore {
         baseUrl: typeof raw.baseUrl === 'string' ? normalizeBaseUrl(raw.baseUrl) : defaults.apiConfigurations[0].baseUrl,
         id: defaults.apiConfigurations[0].id,
         model: typeof raw.model === 'string' && raw.model.trim() ? raw.model : defaults.apiConfigurations[0].model,
-        name: '默认配置'
+        name: '默认配置',
+        sttModel: typeof raw.sttModel === 'string' && raw.sttModel.trim() ? raw.sttModel.trim() : defaults.apiConfigurations[0].sttModel
       }
       return this.completeFile(raw, [legacyConfiguration], legacyConfiguration.id)
     } catch {
@@ -358,6 +399,9 @@ export class SettingsStore {
       selectedKnowledgeBaseIds: Array.isArray(raw.selectedKnowledgeBaseIds)
         ? raw.selectedKnowledgeBaseIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
         : defaults.selectedKnowledgeBaseIds,
+      sttApiKeyEncrypted: typeof raw.sttApiKeyEncrypted === 'string' ? raw.sttApiKeyEncrypted : undefined,
+      sttBaseUrl: typeof raw.sttBaseUrl === 'string' && raw.sttBaseUrl.trim() ? normalizeBaseUrl(raw.sttBaseUrl) : defaults.sttBaseUrl,
+      sttModel: typeof raw.sttModel === 'string' && raw.sttModel.trim() ? raw.sttModel.trim() : (configurations[0]?.sttModel || defaults.sttModel),
       version: 4
     }
   }

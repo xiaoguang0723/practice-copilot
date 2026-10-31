@@ -1,5 +1,6 @@
 export interface HotkeySettings {
   answer: string
+  audioToggle: string
   capture: string
   clear: string
   ghostMode: string
@@ -10,6 +11,14 @@ export interface HotkeySettings {
   scrollDown: string
   scrollUp: string
   toggle: string
+}
+
+export interface AudioStateEvent {
+  error?: string
+  listening: boolean
+  speaking: boolean
+  transcribing: boolean
+  transcript: string
 }
 
 export interface RemoteCompanionSettings {
@@ -27,6 +36,7 @@ export interface ApiConfiguration {
   id: string
   model: string
   name: string
+  sttModel: string
 }
 
 export interface PromptTemplate {
@@ -37,7 +47,11 @@ export interface PromptTemplate {
 
 export interface RemotePanelState {
   apiConfigurationName: string
+  audioListening?: boolean
+  audioSpeaking?: boolean
+  audioTranscribing?: boolean
   captureCount: number
+  liveTranscript?: string
   promptTemplateName: string
 }
 
@@ -56,6 +70,9 @@ export interface PublicSettings {
   promptTemplates: PromptTemplate[]
   remoteCompanion: RemoteCompanionSettings
   selectedKnowledgeBaseIds: string[]
+  sttApiKeySet: boolean
+  sttBaseUrl: string
+  sttModel: string
 }
 
 export interface SettingsPatch {
@@ -71,6 +88,9 @@ export interface SettingsPatch {
   promptTemplateName?: string
   remoteCompanion?: Partial<RemoteCompanionSettings>
   selectedKnowledgeBaseIds?: string[]
+  sttApiKey?: string
+  sttBaseUrl?: string
+  sttModel?: string
 }
 
 export type AnswerEvent =
@@ -89,6 +109,7 @@ export interface KnowledgeDocument { content: string; createdAt: number; id: str
 
 export type HotkeyAction =
   | 'answer'
+  | 'audio-toggle'
   | 'capture'
   | 'clear'
   | 'configuration-next'
@@ -110,6 +131,12 @@ export const IPC = {
   ANSWER_CANCEL: 'answer:cancel',
   ANSWER_EVENT: 'answer:event',
   ANSWER_START: 'answer:start',
+  AUDIO_CLEAR: 'audio:clear',
+  AUDIO_GET_STATE: 'audio:get-state',
+  AUDIO_SPEAKING: 'audio:speaking',
+  AUDIO_STATE: 'audio:state',
+  AUDIO_TOGGLE: 'audio:toggle',
+  AUDIO_TRANSCRIBE: 'audio:transcribe',
   CONVERSATION_CLEAR: 'conversation:clear',
   APP_QUIT: 'app:quit',
   CAPTURE_PRIMARY: 'capture:primary',
@@ -146,6 +173,14 @@ export interface PracticeApi {
   app: {
     quit(): Promise<void>
   }
+  audio: {
+    clear(): Promise<AudioStateEvent>
+    getState(): Promise<AudioStateEvent>
+    onState(callback: (state: AudioStateEvent) => void): () => void
+    setSpeaking(speaking: boolean): Promise<void>
+    toggle(enabled?: boolean): Promise<AudioStateEvent>
+    transcribe(wavBase64: string): Promise<AudioStateEvent>
+  }
   capture: {
     primary(): Promise<CaptureResult>
   }
@@ -169,6 +204,7 @@ export interface PracticeApi {
   remote: {
     getStatus(): Promise<{
       active: boolean
+      availableIps?: Array<{ address: string; name: string }>
       clientCount: number
       ip: string
       outputTarget: 'both' | 'remote-only'
@@ -206,7 +242,8 @@ export function createDefaultSettings(): PublicSettings {
     baseUrl: 'https://api.openai.com/v1',
     id: 'default',
     model: 'gpt-4.1-mini',
-    name: '默认配置'
+    name: '默认配置',
+    sttModel: 'gpt-4o-mini-transcribe'
   }
   return {
     activeApiConfigurationId: defaultConfiguration.id,
@@ -217,6 +254,7 @@ export function createDefaultSettings(): PublicSettings {
     baseUrl: 'https://api.openai.com/v1',
     hotkeys: {
       answer: 'MouseRightDoubleClick',
+      audioToggle: 'Alt+S',
       capture: 'MouseLeftDoubleClick',
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
@@ -239,6 +277,9 @@ export function createDefaultSettings(): PublicSettings {
       port: 5188,
       token: ''
     },
-    selectedKnowledgeBaseIds: []
+    selectedKnowledgeBaseIds: [],
+    sttApiKeySet: false,
+    sttBaseUrl: 'https://api.chatanywhere.tech/v1',
+    sttModel: 'gpt-4o-mini-transcribe'
   }
 }

@@ -24,6 +24,7 @@ export function normalizeChatCompletionsUrl(baseUrl: string): string {
   const normalized = normalizeBaseUrl(baseUrl)
   if (normalized.endsWith('/chat/completions')) return normalized
   if (normalized.endsWith('/responses')) return normalized.replace(/\/responses$/, '/chat/completions')
+  if (normalized.endsWith('/audio/transcriptions')) return normalized.replace(/\/audio\/transcriptions$/, '/chat/completions')
   return `${normalized}/chat/completions`
 }
 
@@ -31,7 +32,20 @@ export function normalizeResponsesUrl(baseUrl: string): string {
   const normalized = normalizeBaseUrl(baseUrl)
   if (normalized.endsWith('/responses')) return normalized
   if (normalized.endsWith('/chat/completions')) return normalized.replace(/\/chat\/completions$/, '/responses')
+  if (normalized.endsWith('/audio/transcriptions')) return normalized.replace(/\/audio\/transcriptions$/, '/responses')
   return `${normalized}/responses`
+}
+
+export function normalizeTranscriptionsUrl(baseUrl: string): string {
+  const normalized = normalizeBaseUrl(baseUrl)
+  if (normalized.endsWith('/audio/transcriptions')) return normalized
+  if (normalized.endsWith('/chat/completions')) return normalized.replace(/\/chat\/completions$/, '/audio/transcriptions')
+  if (normalized.endsWith('/responses')) return normalized.replace(/\/responses$/, '/audio/transcriptions')
+  const parsed = new URL(normalized)
+  if (parsed.pathname === '/' || parsed.pathname === '') {
+    return `${normalized}/v1/audio/transcriptions`
+  }
+  return `${normalized}/audio/transcriptions`
 }
 
 export function normalizeApiUrl(baseUrl: string, protocol: 'chat' | 'response' = 'chat'): string {
@@ -62,6 +76,22 @@ export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
   }
   if (patch.model !== undefined && patch.model.length > 200) {
     return { message: '模型名不能超过 200 个字符', ok: false }
+  }
+  if (patch.sttModel !== undefined && patch.sttModel.trim().length === 0) {
+    return { message: 'STT 模型名不能为空', ok: false }
+  }
+  if (patch.sttModel !== undefined && patch.sttModel.length > 200) {
+    return { message: 'STT 模型名不能超过 200 个字符', ok: false }
+  }
+  if (patch.sttBaseUrl !== undefined) {
+    try {
+      normalizeBaseUrl(patch.sttBaseUrl)
+    } catch (error) {
+      return { message: `STT ${(error as Error).message}`, ok: false }
+    }
+  }
+  if (patch.sttApiKey !== undefined && patch.sttApiKey.length > 4096) {
+    return { message: 'STT API Key 长度无效', ok: false }
   }
   if (patch.opacity !== undefined && (!Number.isFinite(patch.opacity) || patch.opacity < 0.35 || patch.opacity > 0.95)) {
     return { message: '透明度必须在 35% 到 95% 之间', ok: false }

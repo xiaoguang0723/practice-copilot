@@ -4,20 +4,31 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
   safeStorage,
   screen,
+  session,
   type Rectangle
 } from 'electron'
 
-import { IPC, type HotkeyAction, type RemotePanelState, type SettingsPatch } from '../shared/protocol'
+import {
+  IPC,
+  type AudioStateEvent,
+  type HotkeyAction,
+  type RemotePanelState,
+  type SettingsPatch
+} from '../shared/protocol'
 import { validateSettingsPatch } from '../shared/validation'
 import { capturePrimaryDisplay } from './capture'
 import { AppCoordinator } from './coordinator'
 import { registerHotkeys } from './hotkeys'
-import { streamVisionAnswer } from './llm/client'
-import { extractVisionSearchQuery } from './llm/client'
+import {
+  extractVisionSearchQuery,
+  streamVisionAnswer,
+  transcribeAudioChunk
+} from './llm/client'
 import { KnowledgeBaseStore } from './knowledge-base'
 import { RemoteCompanionServer } from './remote-server'
 import { SettingsStore, type SecretCipher } from './settings'
@@ -39,6 +50,27 @@ if (!app.requestSingleInstanceLock()) {
 async function bootstrap(): Promise<void> {
   await app.whenReady()
 
+  if (session?.defaultSession?.setDisplayMediaRequestHandler) {
+    session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+      desktopCapturer
+        .getSources({ types: ['screen'] })
+        .then((sources) => {
+          const primaryDisplay = screen.getPrimaryDisplay()
+          const source =
+            sources.find((candidate) => candidate.display_id === String(primaryDisplay.id)) ??
+            sources[0]
+          if (source) {
+            callback({ audio: 'loopback', video: source })
+          } else {
+            callback({})
+          }
+        })
+        .catch(() => {
+          callback({})
+        })
+    })
+  }
+
   const settingsFile = join(app.getPath('userData'), 'settings.json')
   const boundsFile = join(app.getPath('userData'), 'window-bounds.json')
   const cipher: SecretCipher = {
@@ -53,13 +85,31 @@ async function bootstrap(): Promise<void> {
   let pointerThrough = false
   let ghostMode = false
   let captureCount = 0
+  let audioListening = false
+  let audioSpeaking = false
+  let audioTranscribingCount = 0
+  let liveTranscript = ''
+  let audioError: string | undefined
+  let audioAbortController = new AbortController()
   const mouseHotkeys = new MouseHotkeyManager()
+
+  const getAudioState = (): AudioStateEvent => ({
+    error: audioError,
+    listening: audioListening,
+    speaking: audioListening && audioSpeaking,
+    transcribing: audioTranscribingCount > 0,
+    transcript: liveTranscript
+  })
 
   const getRemotePanelState = (): RemotePanelState => {
     const current = settings.getPublic()
     return {
       apiConfigurationName: current.apiConfigurations.find((configuration) => configuration.id === current.activeApiConfigurationId)?.name ?? '未命名配置',
+      audioListening,
+      audioSpeaking: audioListening && audioSpeaking,
+      audioTranscribing: audioTranscribingCount > 0,
       captureCount,
+      liveTranscript,
       promptTemplateName: current.promptTemplates.find((template) => template.id === current.activePromptTemplateId)?.name ?? '默认提示词'
     }
   }
@@ -105,6 +155,15 @@ async function bootstrap(): Promise<void> {
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   window.once('ready-to-show', () => showWithoutActivation(window))
 
+  const publishAudioState = (): AudioStateEvent => {
+    const state = getAudioState()
+    if (!window.isDestroyed()) {
+      window.webContents.send(IPC.AUDIO_STATE, state)
+    }
+    remoteServer.setPanelState(getRemotePanelState())
+    return state
+  }
+
   const hideWindow = () => {
     window.hide()
   }
@@ -147,6 +206,7 @@ async function bootstrap(): Promise<void> {
       remoteServer.broadcast(event.type, event)
     },
     quit: () => {
+      audioAbortController.abort()
       remoteServer.stop()
       knowledge.close()
       quitting = true
@@ -167,19 +227,17 @@ async function bootstrap(): Promise<void> {
 
   const publishSettings = (current = settings.getPublic()) => {
     window.webContents.send(IPC.SETTINGS_CHANGED, current)
-    remoteServer.setPanelState({
-      apiConfigurationName: current.apiConfigurations.find((configuration) => configuration.id === current.activeApiConfigurationId)?.name ?? '未命名配置',
-      captureCount,
-      promptTemplateName: current.promptTemplates.find((template) => template.id === current.activePromptTemplateId)?.name ?? '默认提示词'
-    })
+    remoteServer.setPanelState(getRemotePanelState())
     return current
   }
 
   const clearConversation = () => {
     coordinator.clearConversation()
     captureCount = 0
+    liveTranscript = ''
+    audioError = undefined
     remoteServer.broadcast('clear', {})
-    remoteServer.setPanelState(getRemotePanelState())
+    publishAudioState()
   }
 
   const activateApiConfiguration = (id: string) => {
@@ -201,11 +259,25 @@ async function bootstrap(): Promise<void> {
     return activateApiConfiguration(next.id)
   }
 
+  const toggleAudioMode = (enabled?: boolean): AudioStateEvent => {
+    audioListening = typeof enabled === 'boolean' ? enabled : !audioListening
+    if (!audioListening) {
+      audioSpeaking = false
+    } else {
+      audioError = undefined
+    }
+    return publishAudioState()
+  }
+
   const handleAction = (action: HotkeyAction) => {
     if (action === 'quit') coordinator.shutdown()
     else if (action === 'toggle') toggleWindow()
     else if (action === 'configuration-next') activateNextApiConfiguration()
     else if (action === 'prompt-template-next') activateNextPromptTemplate()
+    else if (action === 'audio-toggle') {
+      toggleAudioMode()
+      window.webContents.send(IPC.HOTKEY_ACTION, action)
+    }
     else if (action === 'pointer-through') {
       pointerThrough = !pointerThrough
       setPointerThrough(window, pointerThrough)
@@ -272,6 +344,60 @@ async function bootstrap(): Promise<void> {
   if (!initialRegistration.ok) console.error(initialRegistration.message)
 
   ipcMain.handle(IPC.SETTINGS_GET, () => settings.getPublic())
+  ipcMain.handle(IPC.AUDIO_GET_STATE, () => getAudioState())
+  ipcMain.handle(IPC.AUDIO_TOGGLE, (_event, enabled: unknown) => {
+    return toggleAudioMode(typeof enabled === 'boolean' ? enabled : undefined)
+  })
+  ipcMain.handle(IPC.AUDIO_SPEAKING, (_event, speaking: unknown) => {
+    const nextSpeaking = Boolean(speaking)
+    if (audioSpeaking !== nextSpeaking) {
+      audioSpeaking = nextSpeaking
+      publishAudioState()
+    }
+  })
+  ipcMain.handle(IPC.AUDIO_CLEAR, () => {
+    liveTranscript = ''
+    audioError = undefined
+    return publishAudioState()
+  })
+  ipcMain.handle(IPC.AUDIO_TRANSCRIBE, async (_event, wavBase64: unknown) => {
+    if (typeof wavBase64 !== 'string' || !wavBase64) {
+      return getAudioState()
+    }
+    const current = settings.getPublic()
+    const sttApiKey = settings.getSttApiKey()
+    if (!sttApiKey) {
+      audioError = '请先在设置中保存 STT API Key'
+      return publishAudioState()
+    }
+    audioTranscribingCount += 1
+    publishAudioState()
+    try {
+      const text = await transcribeAudioChunk(
+        {
+          apiKey: sttApiKey,
+          baseUrl: current.sttBaseUrl || current.baseUrl,
+          sttModel: current.sttModel || 'gpt-4o-mini-transcribe',
+          wavBase64
+        },
+        audioAbortController.signal
+      )
+      if (text) {
+        liveTranscript = liveTranscript ? `${liveTranscript} ${text}` : text
+        if (liveTranscript.length > 6000) {
+          liveTranscript = liveTranscript.slice(-6000)
+        }
+        audioError = undefined
+      }
+    } catch (error) {
+      if (!audioAbortController.signal.aborted) {
+        audioError = error instanceof Error ? error.message : '语音识别失败'
+      }
+    } finally {
+      audioTranscribingCount = Math.max(0, audioTranscribingCount - 1)
+    }
+    return publishAudioState()
+  })
   ipcMain.handle(IPC.SETTINGS_CONFIGURATION_ACTIVATE, (_event, id: unknown) => {
     if (typeof id !== 'string') throw new Error('配置无效')
     return activateApiConfiguration(id)
@@ -366,6 +492,13 @@ async function bootstrap(): Promise<void> {
     if (typeof input?.text !== 'string' || input.text.length > 8000) {
       throw new Error('输入内容无效')
     }
+    const rawInputText = input.text.trim()
+    const transcriptPart = liveTranscript.trim()
+    const finalText =
+      transcriptPart && !rawInputText.includes(transcriptPart)
+        ? [transcriptPart, rawInputText].filter(Boolean).join('\n')
+        : rawInputText || transcriptPart
+
     const current = settings.getPublic()
     const apiKey = settings.getApiKey()
     if (!apiKey) throw new Error('请先在设置中保存 API Key')
@@ -373,17 +506,19 @@ async function bootstrap(): Promise<void> {
       apiKey,
       apiProtocol: current.apiProtocol,
       baseUrl: current.baseUrl,
-      userText: input.text,
+      userText: finalText,
       knowledgeBaseEnabled: current.knowledgeBaseEnabled,
       model: current.model,
       persistentPrompt: current.persistentPrompt,
       selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
     captureCount = 0
-    remoteServer.setPanelState(getRemotePanelState())
+    liveTranscript = ''
+    audioError = undefined
+    publishAudioState()
     remoteServer.broadcast('turn-start', {
       turnId: result.turnId,
-      userText: input.text
+      userText: finalText
     })
     return result
   })
@@ -408,6 +543,7 @@ async function bootstrap(): Promise<void> {
     showWithoutActivation(window, !pointerThrough)
   })
   app.on('before-quit', (event) => {
+    audioAbortController.abort()
     remoteServer.stop()
     if (!quitting) {
       event.preventDefault()

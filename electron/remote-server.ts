@@ -100,7 +100,11 @@ export class RemoteCompanionServer {
   private turnTexts = new Map<string, string>()
   private panelState: RemotePanelState = {
     apiConfigurationName: '未命名配置',
+    audioListening: false,
+    audioSpeaking: false,
+    audioTranscribing: false,
     captureCount: 0,
+    liveTranscript: '',
     promptTemplateName: '默认提示词'
   }
 
@@ -331,6 +335,10 @@ export class RemoteCompanionServer {
       text-overflow: clip;
       word-break: break-word;
     }
+    .audio-active-badge {
+      color: #f87171 !important;
+      font-weight: 600;
+    }
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -374,6 +382,37 @@ export class RemoteCompanionServer {
       padding: 12px 16px;
       max-width: 880px;
       margin: 0 auto;
+    }
+    .live-transcript-card {
+      display: none;
+      background: rgba(127, 29, 29, 0.18);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .live-transcript-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fca5a5;
+      margin-bottom: 4px;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+      animation: blink 1s steps(1) infinite;
+    }
+    .live-transcript-body {
+      font-size: 12px;
+      color: #fee2e2;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
     .empty-state {
       display: flex;
@@ -490,6 +529,9 @@ export class RemoteCompanionServer {
       margin-left: 2px;
       animation: blink 1s steps(1) infinite;
     }
+    .cursor.audio-cursor {
+      background: #ef4444;
+    }
     @keyframes blink { 50% { opacity: 0; } }
   </style>
 </head>
@@ -506,6 +548,7 @@ export class RemoteCompanionServer {
       <span id="captureState">已截图 0 张</span>
       <span id="apiState">API：未命名配置</span>
       <span id="promptState">提示词：默认提示词</span>
+      <span id="audioState">听写：已关闭</span>
     </div>
     <div class="header-actions">
       <button class="btn" id="fontDown" title="缩小字号">A-</button>
@@ -515,6 +558,13 @@ export class RemoteCompanionServer {
   </header>
 
   <main id="container">
+    <div class="live-transcript-card" id="liveTranscriptCard">
+      <div class="live-transcript-header">
+        <span class="live-dot"></span>
+        <span id="liveTranscriptTitle">系统音频实时听写中</span>
+      </div>
+      <div class="live-transcript-body" id="liveTranscriptBody">等待系统声音...</div>
+    </div>
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">📡</div>
       <p>已连接主控电脑<br><small style="color:#4b5563">在电脑端按下快捷键，答案将实时流式展示于此</small></p>
@@ -532,6 +582,11 @@ export class RemoteCompanionServer {
     const captureState = document.getElementById('captureState');
     const apiState = document.getElementById('apiState');
     const promptState = document.getElementById('promptState');
+    const audioState = document.getElementById('audioState');
+    const liveTranscriptCard = document.getElementById('liveTranscriptCard');
+    const liveTranscriptTitle = document.getElementById('liveTranscriptTitle');
+    const liveTranscriptBody = document.getElementById('liveTranscriptBody');
+    let isAudioListening = false;
 
     // 字体调节
     const fontLevels = [11, 12, 13, 14, 15, 17, 20];
@@ -691,7 +746,7 @@ export class RemoteCompanionServer {
       card.appendChild(contentEl);
 
       const cursor = document.createElement('span');
-      cursor.className = 'cursor';
+      cursor.className = isAudioListening ? 'cursor audio-cursor' : 'cursor';
       card.appendChild(cursor);
 
       turnsList.appendChild(card);
@@ -731,6 +786,29 @@ export class RemoteCompanionServer {
           captureState.textContent = '已截图 ' + (Number(data.captureCount) || 0) + ' 张';
           apiState.textContent = 'API：' + (data.apiConfigurationName || '未命名配置');
           promptState.textContent = '提示词：' + (data.promptTemplateName || '默认提示词');
+          isAudioListening = Boolean(data.audioListening);
+          const transcript = typeof data.liveTranscript === 'string' ? data.liveTranscript.trim() : '';
+          if (isAudioListening) {
+            audioState.className = 'audio-active-badge';
+            audioState.textContent = data.audioTranscribing
+              ? '听写：转写中...'
+              : (data.audioSpeaking ? '听写：正在收音' : '听写：监听中');
+          } else {
+            audioState.className = '';
+            audioState.textContent = '听写：已关闭';
+          }
+          if (currentCursor) {
+            currentCursor.className = isAudioListening ? 'cursor audio-cursor' : 'cursor';
+          }
+          if (isAudioListening || transcript) {
+            liveTranscriptCard.style.display = 'block';
+            liveTranscriptTitle.textContent = data.audioTranscribing
+              ? '系统音频实时听写 · 正在转写...'
+              : (data.audioSpeaking ? '系统音频实时听写 · 正在收音...' : '系统音频实时听写 · 监听中');
+            liveTranscriptBody.textContent = transcript || (data.audioSpeaking ? '检测到系统声音，正在录制...' : '等待系统声音播放（右键双击发送给模型）...');
+          } else {
+            liveTranscriptCard.style.display = 'none';
+          }
         } catch (_) {}
       });
 

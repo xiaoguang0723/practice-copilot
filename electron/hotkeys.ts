@@ -25,7 +25,8 @@ const configurableActions: Array<[keyof HotkeySettings, HotkeyAction]> = [
   ['scrollDown', 'scroll-down'],
   ['ghostMode', 'ghost-mode'],
   ['remoteOutputToggle', 'remote-output-toggle'],
-  ['promptTemplateNext', 'prompt-template-next']
+  ['promptTemplateNext', 'prompt-template-next'],
+  ['audioToggle', 'audio-toggle']
 ]
 const fixedActions: Array<[Exclude<ShortcutAction, keyof HotkeySettings>, string]> = [
   ['move-up', 'Control+Up'],
@@ -48,6 +49,7 @@ function registerSet(
   }
   for (const [key, action] of configurableActions) {
     const accelerator = hotkeys[key]
+    if (!accelerator) continue
     if (isMouseShortcut(accelerator)) mouse?.register(accelerator, () => onAction(action))
     else if (!registrar.register(accelerator, () => onAction(action))) return accelerator
   }

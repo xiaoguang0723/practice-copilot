@@ -41,6 +41,9 @@ export function SettingsPanel({
   const [apiProtocol, setApiProtocol] = useState<'chat' | 'response'>(settings.apiProtocol)
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState(settings.model)
+  const [sttBaseUrl, setSttBaseUrl] = useState(settings.sttBaseUrl || 'https://api.chatanywhere.tech/v1')
+  const [sttApiKey, setSttApiKey] = useState('')
+  const [sttModel, setSttModel] = useState(settings.sttModel || 'gpt-4o-mini-transcribe')
   const [newConfigurationName, setNewConfigurationName] = useState('')
   const [newPromptTemplateName, setNewPromptTemplateName] = useState('')
   const [opacity, setOpacity] = useState(settings.opacity)
@@ -93,7 +96,10 @@ export function SettingsPanel({
         enabled: remoteEnabled,
         ip: remoteIp,
         outputTarget: remoteOutputTarget
-      }
+      },
+      sttApiKey,
+      sttBaseUrl,
+      sttModel
     }
     const validation = validateSettingsPatch(patch)
     if (!validation.ok) {
@@ -256,6 +262,26 @@ export function SettingsPanel({
           <span>模型名</span>
           <input value={model} onChange={(event) => setModel(event.target.value)} />
         </label>
+
+        <section aria-label="语音转文字独立配置" className="api-configuration-section">
+          <div className="configuration-section-heading">
+            <span>语音转文字 (STT) 独立接口</span>
+            <small>与文本回答模型解耦</small>
+          </div>
+          <label>
+            <span>STT API Base URL</span>
+            <input aria-label="STT API Base URL" placeholder="https://api.chatanywhere.tech/v1" value={sttBaseUrl} onChange={(event) => setSttBaseUrl(event.target.value)} />
+          </label>
+          <label>
+            <span>STT API Key {settings.sttApiKeySet && <small>已配置独立密钥</small>}</span>
+            <input aria-label="STT API Key" autoComplete="off" placeholder={settings.sttApiKeySet ? '留空以保留当前 STT 密钥' : 'sk-…'} type="password" value={sttApiKey} onChange={(event) => setSttApiKey(event.target.value)} />
+          </label>
+          <label>
+            <span>STT 模型名</span>
+            <input aria-label="STT 模型名" placeholder="例如：gpt-4o-mini-transcribe 或 whisper-1" value={sttModel} onChange={(event) => setSttModel(event.target.value)} />
+          </label>
+        </section>
+
         <label>
           <span>窗口透明度 {Math.round(opacity * 100)}%</span>
           <input aria-label="窗口透明度" max="95" min="35" onChange={(event) => {
@@ -357,6 +383,7 @@ export function SettingsPanel({
               ['capture', '截图'],
               ['answer', '发送'],
               ['clear', '清空截图'],
+              ['audioToggle', '系统音频听写'],
               ['toggle', '显示 / 隐藏'],
               ['pointerThrough', '鼠标穿透'],
               ['promptTemplateNext', '切换提示词模板'],

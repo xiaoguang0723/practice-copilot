@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
   type AnswerEvent,
+  type AudioStateEvent,
   type HotkeyAction,
   type PublicSettings,
   type PracticeApi
@@ -20,6 +21,18 @@ const api: PracticeApi = {
   },
   app: {
     quit: () => ipcRenderer.invoke(IPC.APP_QUIT)
+  },
+  audio: {
+    clear: () => ipcRenderer.invoke(IPC.AUDIO_CLEAR),
+    getState: () => ipcRenderer.invoke(IPC.AUDIO_GET_STATE),
+    onState: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, state: AudioStateEvent) => callback(state)
+      ipcRenderer.on(IPC.AUDIO_STATE, listener)
+      return () => ipcRenderer.removeListener(IPC.AUDIO_STATE, listener)
+    },
+    setSpeaking: (speaking) => ipcRenderer.invoke(IPC.AUDIO_SPEAKING, speaking),
+    toggle: (enabled) => ipcRenderer.invoke(IPC.AUDIO_TOGGLE, enabled),
+    transcribe: (wavBase64) => ipcRenderer.invoke(IPC.AUDIO_TRANSCRIBE, wavBase64)
   },
   capture: {
     primary: () => ipcRenderer.invoke(IPC.CAPTURE_PRIMARY)
@@ -54,11 +67,11 @@ const api: PracticeApi = {
     copyApiKey: () => ipcRenderer.invoke(IPC.SETTINGS_COPY_API_KEY),
     createApiConfiguration: (name) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_CREATE, name),
     deleteApiConfiguration: (id) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_DELETE, id),
+    get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
+    moveApiConfiguration: (id, direction) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_MOVE, id, direction),
     activatePromptTemplate: (id) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_ACTIVATE, id),
     createPromptTemplate: (name) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_CREATE, name),
     deletePromptTemplate: (id) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_DELETE, id),
-    get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
-    moveApiConfiguration: (id, direction) => ipcRenderer.invoke(IPC.SETTINGS_CONFIGURATION_MOVE, id, direction),
     movePromptTemplate: (id, direction) => ipcRenderer.invoke(IPC.SETTINGS_PROMPT_TEMPLATE_MOVE, id, direction),
     onChange: (callback) => {
       const listener = (_event: Electron.IpcRendererEvent, settings: PublicSettings) => callback(settings)

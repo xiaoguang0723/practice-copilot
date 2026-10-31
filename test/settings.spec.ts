@@ -54,7 +54,8 @@ describe('SettingsStore', () => {
       apiProtocol: 'response',
       baseUrl: 'https://example.com/v1/',
       hotkeys: { capture: 'Ctrl+Q' },
-      opacity: 0.65
+      opacity: 0.65,
+      sttModel: 'whisper-1'
     })
 
     const reloaded = new SettingsStore(filePath, {
@@ -65,8 +66,10 @@ describe('SettingsStore', () => {
 
     expect(reloaded.getPublic().apiProtocol).toBe('response')
     expect(reloaded.getPublic().baseUrl).toBe('https://example.com/v1')
+    expect(reloaded.getPublic().sttModel).toBe('whisper-1')
     expect(reloaded.getPublic().hotkeys).toEqual({
       answer: 'MouseRightDoubleClick',
+      audioToggle: 'Alt+S',
       capture: 'Ctrl+Q',
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
@@ -169,6 +172,7 @@ describe('SettingsStore', () => {
     const { store } = createStoreFrom(filePath)
     expect(store.getPublic().hotkeys).toEqual({
       answer: 'MouseRightDoubleClick',
+      audioToggle: 'Alt+S',
       capture: 'Ctrl+Q',
       clear: 'MouseMiddleDoubleClick',
       ghostMode: 'Alt+M',
@@ -194,8 +198,8 @@ describe('SettingsStore', () => {
         answer: 'Alt+W',
         capture: 'Alt+Q',
         clear: 'Alt+R',
-      pointerThrough: 'Alt+D',
-      promptTemplateNext: 'MouseRightLongPress',
+        pointerThrough: 'Alt+D',
+        promptTemplateNext: 'MouseRightLongPress',
         quit: 'Alt+X',
         scrollDown: 'Shift+Down',
         scrollUp: 'Shift+Up',
