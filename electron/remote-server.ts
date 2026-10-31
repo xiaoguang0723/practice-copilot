@@ -237,12 +237,16 @@ export class RemoteCompanionServer {
 
     // SSE 流式通道
     if (parsed.pathname === '/api/stream') {
+      req.socket.setNoDelay(true)
+      req.socket.setKeepAlive(true)
       res.writeHead(200, {
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'Content-Type': 'text/event-stream'
+        'Content-Type': 'text/event-stream',
+        'X-Accel-Buffering': 'no'
       })
+      res.flushHeaders?.()
       res.write(`event: ready\ndata: ${JSON.stringify({ clientCount: this.activeClients.size + 1 })}\n\n`)
       this.activeClients.add(res)
       res.write(`event: state\ndata: ${JSON.stringify(this.panelState)}\n\n`)

@@ -24,6 +24,7 @@ import {
 } from '../shared/protocol'
 import { validateSettingsPatch } from '../shared/validation'
 import { captureScreen } from './capture'
+import { AnswerEventBatcher } from './answer-batcher'
 import { AppCoordinator } from './coordinator'
 import { registerHotkeys } from './hotkeys'
 import {
@@ -205,15 +206,17 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  const answerBatcher = new AnswerEventBatcher((event) => {
+    const current = settings.getPublic()
+    if (!current.remoteCompanion.enabled || current.remoteCompanion.outputTarget !== 'remote-only') {
+      if (!window.isDestroyed()) window.webContents.send(IPC.ANSWER_EVENT, event)
+    }
+    remoteServer.broadcast(event.type, event)
+  })
+
   const coordinator = new AppCoordinator({
     capture: () => captureScreen({ auxiliaryWindow: settings.getPublic().captureAuxiliaryWindow }),
-    emitAnswer: (event) => {
-      const current = settings.getPublic()
-      if (!current.remoteCompanion.enabled || current.remoteCompanion.outputTarget !== 'remote-only') {
-        window.webContents.send(IPC.ANSWER_EVENT, event)
-      }
-      remoteServer.broadcast(event.type, event)
-    },
+    emitAnswer: (event) => answerBatcher.push(event),
     quit: () => {
       audioAbortController.abort()
       remoteServer.stop()

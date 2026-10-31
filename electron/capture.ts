@@ -267,18 +267,29 @@ export async function captureProtectedWindows(excludePid = 0): Promise<Protected
   }
 }
 
+const MAX_CAPTURE_LONG_EDGE = 2000
+
+export function fitWithin(width: number, height: number, maxLongEdge = MAX_CAPTURE_LONG_EDGE): { height: number; width: number } {
+  const longEdge = Math.max(width, height)
+  if (longEdge <= maxLongEdge) return { height, width }
+  const scale = maxLongEdge / longEdge
+  return { height: Math.round(height * scale), width: Math.round(width * scale) }
+}
+
 export async function capturePrimaryDisplay(): Promise<CapturedScreen> {
   const display = screen.getPrimaryDisplay()
-  const width = Math.round(display.size.width * display.scaleFactor)
-  const height = Math.round(display.size.height * display.scaleFactor)
+  const size = fitWithin(
+    Math.round(display.size.width * display.scaleFactor),
+    Math.round(display.size.height * display.scaleFactor)
+  )
   const sources = await desktopCapturer.getSources({
-    thumbnailSize: { height, width },
+    thumbnailSize: size,
     types: ['screen']
   })
   const source = sources.find((candidate) => candidate.display_id === String(display.id)) ?? sources[0]
   if (!source || source.thumbnail.isEmpty()) throw new Error('无法捕获主屏幕')
 
-  const jpeg = source.thumbnail.toJPEG(85)
+  const jpeg = source.thumbnail.toJPEG(80)
   return {
     capturedAt: Date.now(),
     dataUrl: `data:image/jpeg;base64,${jpeg.toString('base64')}`,
@@ -314,8 +325,10 @@ export async function captureAuxiliaryWindow(
 
 export async function captureScreen(options: { auxiliaryWindow?: string }): Promise<CaptureBatch> {
   const display = screen.getPrimaryDisplay()
-  const width = Math.round(display.size.width * display.scaleFactor)
-  const height = Math.round(display.size.height * display.scaleFactor)
+  const { height, width } = fitWithin(
+    Math.round(display.size.width * display.scaleFactor),
+    Math.round(display.size.height * display.scaleFactor)
+  )
   const auxiliaryPattern = options.auxiliaryWindow?.trim() ?? ''
   const [primary, protectedCapture, auxiliary] = await Promise.all([
     capturePrimaryDisplay(),
