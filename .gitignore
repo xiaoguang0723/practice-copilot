@@ -5,8 +5,4 @@ release/
 *.tsbuildinfo
 .superpowers/
 *.log
-
-/test
-/test
-/test
 .scratch/
