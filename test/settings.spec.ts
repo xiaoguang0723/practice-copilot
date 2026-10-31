@@ -48,6 +48,21 @@ describe('SettingsStore', () => {
     expect(store.getApiKey()).toBeUndefined()
   })
 
+  it('stores the auxiliary capture window keyword and reloads it', () => {
+    const { filePath, store } = createStore()
+    expect(store.getPublic().captureAuxiliaryWindow).toBe('')
+
+    store.applyPatch({ captureAuxiliaryWindow: 'VMware' })
+    expect(store.getPublic().captureAuxiliaryWindow).toBe('VMware')
+
+    const reloaded = new SettingsStore(filePath, {
+      available: () => true,
+      decrypt: (value) => Buffer.from(value, 'base64').toString('utf8'),
+      encrypt: (value) => Buffer.from(value).toString('base64')
+    })
+    expect(reloaded.getPublic().captureAuxiliaryWindow).toBe('VMware')
+  })
+
   it('merges partial hotkeys and reloads persisted settings', () => {
     const { filePath, store } = createStore()
     store.applyPatch({

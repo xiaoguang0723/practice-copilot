@@ -62,6 +62,7 @@ export interface PublicSettings {
   apiKeySet: boolean
   apiProtocol: 'chat' | 'response'
   baseUrl: string
+  captureAuxiliaryWindow: string
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
   model: string
@@ -80,6 +81,7 @@ export interface SettingsPatch {
   apiKey?: string
   apiProtocol?: 'chat' | 'response'
   baseUrl?: string
+  captureAuxiliaryWindow?: string
   hotkeys?: Partial<HotkeySettings>
   knowledgeBaseEnabled?: boolean
   model?: string
@@ -102,6 +104,8 @@ export interface CaptureResult {
   capturedAt: number
   count: number
   height: number
+  protectedWindows?: string[]
+  rescuedWindows?: string[]
   width: number
 }
 export interface KnowledgeBaseSummary { createdAt: number; id: string; name: string; updatedAt: number }
@@ -137,8 +141,12 @@ export const IPC = {
   AUDIO_STATE: 'audio:state',
   AUDIO_TOGGLE: 'audio:toggle',
   AUDIO_TRANSCRIBE: 'audio:transcribe',
+  CAPTURE_PUSHED: 'capture:pushed',
   CONVERSATION_CLEAR: 'conversation:clear',
+  CONVERSATION_CLEARED: 'conversation:cleared',
   APP_QUIT: 'app:quit',
+  CAPTURE_IMPORT_IMAGE: 'capture:import-image',
+  CAPTURE_IMPORT_IMAGE_FILE: 'capture:import-image-file',
   CAPTURE_PRIMARY: 'capture:primary',
   HOTKEY_ACTION: 'hotkeys:action',
   HOTKEY_RECORD: 'hotkeys:record',
@@ -182,10 +190,14 @@ export interface PracticeApi {
     transcribe(wavBase64: string): Promise<AudioStateEvent>
   }
   capture: {
+    importImage(dataUrl: string): Promise<CaptureResult>
+    importImageFile(): Promise<CaptureResult | null>
+    onPushed(callback: (result: CaptureResult) => void): () => void
     primary(): Promise<CaptureResult>
   }
   conversation: {
     clear(): Promise<void>
+    onCleared(callback: () => void): () => void
   }
   hotkeys: {
     onAction(callback: (action: HotkeyAction) => void): () => void
@@ -252,6 +264,7 @@ export function createDefaultSettings(): PublicSettings {
     apiKeySet: false,
     apiProtocol: 'chat',
     baseUrl: 'https://api.openai.com/v1',
+    captureAuxiliaryWindow: '',
     hotkeys: {
       answer: 'MouseRightDoubleClick',
       audioToggle: 'Alt+S',

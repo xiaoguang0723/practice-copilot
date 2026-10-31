@@ -40,6 +40,42 @@ describe('buildVisionMessages', () => {
     ).toHaveLength(2)
   })
 
+  it('tells the model that protected windows were re-captured as extra images', () => {
+    const messages = buildVisionMessages({
+      extraPrompt: '',
+      imageDataUrls: ['data:image/jpeg;base64,abc', 'data:image/jpeg;base64,rescue'],
+      persistentPrompt: '',
+      protectedWindows: ['国考云考试系统'],
+      rescuedWindows: ['国考云考试系统']
+    })
+
+    const systemText = messages
+      .filter((message) => message.role === 'system')
+      .map((message) => message.content)
+      .join('\n')
+    expect(systemText).toContain('防截屏')
+    expect(systemText).toContain('补拍')
+    expect(systemText).toContain('国考云考试系统')
+  })
+
+  it('warns the model when a protected window could not be re-captured', () => {
+    const messages = buildVisionMessages({
+      extraPrompt: '',
+      imageDataUrls: ['data:image/jpeg;base64,abc'],
+      persistentPrompt: '',
+      protectedWindows: ['国考云考试系统'],
+      rescuedWindows: []
+    })
+
+    const systemText = messages
+      .filter((message) => message.role === 'system')
+      .map((message) => message.content)
+      .join('\n')
+    expect(systemText).toContain('补拍失败')
+    expect(systemText).toContain('国考云考试系统')
+    expect(systemText).toContain('不要臆测')
+  })
+
   it('converts every image to Responses input in capture order', () => {
     const input = toResponsesInput(buildVisionMessages({
       extraPrompt: '',
