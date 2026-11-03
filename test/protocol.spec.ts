@@ -21,6 +21,7 @@ describe('createDefaultSettings', () => {
     })
     expect(createDefaultSettings().opacity).toBe(0.88)
     expect(createDefaultSettings().sttModel).toBe('gpt-4o-mini-transcribe')
+    expect(createDefaultSettings().audioAutoStopOnSend).toBe(true)
   })
 
   it('defines a temporary window opacity channel', () => {

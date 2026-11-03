@@ -109,7 +109,12 @@ export function App() {
         dispatch({ requestId, turnId, type: 'turn-start', userText: combinedText })
       }
       setMessage('')
-      setAudioState((prev) => ({ ...prev, error: undefined, transcript: '' }))
+      if (settingsRef.current?.audioAutoStopOnSend !== false && window.practice.audio?.toggle) {
+        const nextAudio = await window.practice.audio.toggle(false)
+        setAudioState(nextAudio)
+      } else {
+        setAudioState((prev) => ({ ...prev, error: undefined, transcript: '' }))
+      }
       dispatch({ type: 'capture-clear' })
     } catch (error) {
       dispatch({ message: errorMessage(error), type: 'local-error' })

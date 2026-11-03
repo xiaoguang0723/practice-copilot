@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createRequestSignal, extractVisionSearchQuery, streamVisionAnswer } from '../electron/llm/client'
+import { createRequestSignal, extractVisionSearchQuery, streamVisionAnswer, transcribeAudioChunk } from '../electron/llm/client'
 
 const originalFetch = globalThis.fetch
 
@@ -222,4 +222,23 @@ describe('streamVisionAnswer', () => {
     await rejection
     vi.useRealTimers()
   })
-})
+  it('requests simplified Chinese transcription with zh language and prompt', async () => {
+    let capturedBody: FormData | undefined
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      capturedBody = init?.body as FormData
+      return new Response(JSON.stringify({ text: '这是一段简体中文转写' }), { status: 200 })
+    })
+
+    const result = await transcribeAudioChunk({
+      apiKey: 'test-stt-key',
+      baseUrl: 'https://api.example.com/v1',
+      sttModel: 'whisper-1',
+      wavBase64: Buffer.from('mock-audio').toString('base64')
+    }, new AbortController().signal)
+
+    expect(result).toBe('这是一段简体中文转写')
+    expect(capturedBody?.get('language')).toBe('zh')
+    expect(capturedBody?.get('prompt')).toContain('简体中文')
+    expect(capturedBody?.get('model')).toBe('whisper-1')
+  })
+});

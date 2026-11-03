@@ -102,6 +102,9 @@ export function validateSettingsPatch(patch: SettingsPatch): ValidationResult {
   if (patch.captureAuxiliaryWindow !== undefined && patch.captureAuxiliaryWindow.length > 120) {
     return { message: '附加捕获窗口关键字不能超过 120 个字符', ok: false }
   }
+  if (patch.audioAutoStopOnSend !== undefined && typeof patch.audioAutoStopOnSend !== 'boolean') {
+    return { message: '自动停止听写开关无效', ok: false }
+  }
   if (patch.knowledgeBaseEnabled !== undefined && typeof patch.knowledgeBaseEnabled !== 'boolean') {
     return { message: '知识库开关无效', ok: false }
   }

@@ -61,6 +61,7 @@ export interface PublicSettings {
   apiConfigurations: ApiConfiguration[]
   apiKeySet: boolean
   apiProtocol: 'chat' | 'response'
+  audioAutoStopOnSend: boolean
   baseUrl: string
   captureAuxiliaryWindow: string
   hotkeys: HotkeySettings
@@ -80,6 +81,7 @@ export interface SettingsPatch {
   apiConfigName?: string
   apiKey?: string
   apiProtocol?: 'chat' | 'response'
+  audioAutoStopOnSend?: boolean
   baseUrl?: string
   captureAuxiliaryWindow?: string
   hotkeys?: Partial<HotkeySettings>
@@ -263,6 +265,7 @@ export function createDefaultSettings(): PublicSettings {
     apiConfigurations: [defaultConfiguration],
     apiKeySet: false,
     apiProtocol: 'chat',
+    audioAutoStopOnSend: true,
     baseUrl: 'https://api.openai.com/v1',
     captureAuxiliaryWindow: '',
     hotkeys: {

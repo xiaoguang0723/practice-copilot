@@ -43,7 +43,8 @@ export function SettingsPanel({
   const [model, setModel] = useState(settings.model)
   const [sttBaseUrl, setSttBaseUrl] = useState(settings.sttBaseUrl || 'https://api.chatanywhere.tech/v1')
   const [sttApiKey, setSttApiKey] = useState('')
-  const [sttModel, setSttModel] = useState(settings.sttModel || 'gpt-4o-mini-transcribe')
+  const [sttModel, setSttModel] = useState(settings.sttModel || 'whisper-1')
+  const [audioAutoStopOnSend, setAudioAutoStopOnSend] = useState(settings.audioAutoStopOnSend ?? true)
   const [newConfigurationName, setNewConfigurationName] = useState('')
   const [newPromptTemplateName, setNewPromptTemplateName] = useState('')
   const [opacity, setOpacity] = useState(settings.opacity)
@@ -208,6 +209,14 @@ export function SettingsPanel({
             <input aria-label="新配置名称" maxLength={80} placeholder="新配置名称" value={newConfigurationName} onChange={(event) => setNewConfigurationName(event.target.value)} />
             <button className="secondary-button" onClick={createConfiguration} type="button">新建配置</button>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '6px' }}>
+            <input
+              type="checkbox"
+              checked={audioAutoStopOnSend}
+              onChange={(e) => setAudioAutoStopOnSend(e.target.checked)}
+            />
+            <span>发送后自动停止听写（推荐面试单题问答开启，省心不录杂音）</span>
+          </label>
         </section>
 
         <section aria-label="提示词模板列表" className="api-configuration-section prompt-template-section">

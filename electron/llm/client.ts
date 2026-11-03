@@ -79,7 +79,9 @@ export async function transcribeAudioChunk(
     const formData = new FormData()
     const blob = new Blob([wavBytes], { type: 'audio/wav' })
     formData.append('file', blob, 'speech.wav')
-    formData.append('model', options.sttModel.trim() || 'gpt-4o-mini-transcribe')
+    formData.append('model', options.sttModel.trim() || 'whisper-1')
+    formData.append('language', 'zh')
+    formData.append('prompt', '请将语音转录为简体中文，普通话。')
     formData.append('response_format', 'json')
     formData.append('temperature', '0')
 

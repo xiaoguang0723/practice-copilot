@@ -557,6 +557,10 @@ async function bootstrap(): Promise<void> {
         : rawInputText || transcriptPart
 
     const current = settings.getPublic()
+    if (current.audioAutoStopOnSend !== false && audioListening) {
+      audioListening = false
+      audioSpeaking = false
+    }
     const apiKey = settings.getApiKey()
     if (!apiKey) throw new Error('请先在设置中保存 API Key')
     const result = coordinator.startAnswer({

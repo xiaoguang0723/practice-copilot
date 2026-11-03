@@ -34,6 +34,7 @@ interface LegacySettingsFile {
   apiKeyEncrypted?: string
   apiProtocol?: 'chat' | 'response'
   baseUrl?: string
+  audioAutoStopOnSend?: boolean
   captureAuxiliaryWindow?: string
   hotkeys?: HotkeySettings
   knowledgeBaseEnabled?: boolean
@@ -59,6 +60,7 @@ interface SettingsFile {
   activeApiConfigurationId: string
   activePromptTemplateId: string
   apiConfigurations: StoredApiConfiguration[]
+  audioAutoStopOnSend: boolean
   captureAuxiliaryWindow: string
   hotkeys: HotkeySettings
   knowledgeBaseEnabled: boolean
@@ -86,6 +88,7 @@ function defaultFile(): SettingsFile {
       name: configuration.name,
       sttModel: configuration.sttModel
     }],
+    audioAutoStopOnSend: defaults.audioAutoStopOnSend,
     captureAuxiliaryWindow: defaults.captureAuxiliaryWindow,
     hotkeys: { ...defaults.hotkeys },
     knowledgeBaseEnabled: defaults.knowledgeBaseEnabled,
@@ -122,6 +125,7 @@ export class SettingsStore {
       apiKeySet: Boolean(active.apiKeyEncrypted),
       apiProtocol: active.apiProtocol,
       baseUrl: active.baseUrl,
+      audioAutoStopOnSend: this.data.audioAutoStopOnSend,
       captureAuxiliaryWindow: this.data.captureAuxiliaryWindow,
       hotkeys: { ...this.data.hotkeys },
       knowledgeBaseEnabled: this.data.knowledgeBaseEnabled,
@@ -169,6 +173,7 @@ export class SettingsStore {
     if (patch.apiProtocol !== undefined) active.apiProtocol = patch.apiProtocol
     if (patch.baseUrl !== undefined) active.baseUrl = normalizeBaseUrl(patch.baseUrl)
     if (patch.model !== undefined) active.model = patch.model.trim()
+    if (patch.audioAutoStopOnSend !== undefined) this.data.audioAutoStopOnSend = patch.audioAutoStopOnSend
     if (patch.captureAuxiliaryWindow !== undefined) this.data.captureAuxiliaryWindow = patch.captureAuxiliaryWindow.trim()
     if (patch.sttBaseUrl !== undefined) this.data.sttBaseUrl = normalizeBaseUrl(patch.sttBaseUrl)
     if (patch.sttModel !== undefined) {
@@ -383,6 +388,7 @@ export class SettingsStore {
         ? activeId
         : configurations[0].id,
       apiConfigurations: configurations,
+      audioAutoStopOnSend: typeof raw.audioAutoStopOnSend === 'boolean' ? raw.audioAutoStopOnSend : defaults.audioAutoStopOnSend,
       captureAuxiliaryWindow: typeof raw.captureAuxiliaryWindow === 'string'
         ? raw.captureAuxiliaryWindow.trim().slice(0, 120)
         : defaults.captureAuxiliaryWindow,
