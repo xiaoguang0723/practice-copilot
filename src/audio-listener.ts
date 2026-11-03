@@ -133,11 +133,14 @@ export class SystemAudioListener {
     }
   }
 
-  async flushNow(): Promise<void> {
+  async flushNow(stopCapture = false, onCaptureStopped?: () => void): Promise<void> {
     if (this.speechFrames.length > 0 && this.speechFrameCount >= 1) {
       this.emitCurrentSpeechChunk()
     }
-    if (this.speaking) {
+    if (stopCapture) {
+      this.stop()
+      onCaptureStopped?.()
+    } else if (this.speaking) {
       this.speaking = false
       this.callbacks.onSpeakingChange?.(false)
     }

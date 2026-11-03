@@ -27,10 +27,10 @@ const packageLock = JSON.parse(
 ) as PackageLock
 
 describe('release configuration', () => {
-  it('uses the 0.9.0 release identity consistently', () => {
-    expect(packageManifest.version).toBe('0.9.0')
-    expect(packageLock.version).toBe('0.9.0')
-    expect(packageLock.packages[''].version).toBe('0.9.0')
+  it('uses the 0.9.1 release identity consistently', () => {
+    expect(packageManifest.version).toBe('0.9.1')
+    expect(packageLock.version).toBe('0.9.1')
+    expect(packageLock.packages[''].version).toBe('0.9.1')
   })
 
   it('uses the stable release artifact name and installed Electron runtime', () => {

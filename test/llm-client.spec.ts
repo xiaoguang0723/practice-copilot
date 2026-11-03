@@ -222,11 +222,14 @@ describe('streamVisionAnswer', () => {
     await rejection
     vi.useRealTimers()
   })
-  it('requests simplified Chinese transcription with zh language and prompt', async () => {
+  it('requests simplified Chinese transcription with zh language and prompt and normalizes traditional characters', async () => {
     let capturedBody: FormData | undefined
     globalThis.fetch = vi.fn(async (_url, init) => {
       capturedBody = init?.body as FormData
-      return new Response(JSON.stringify({ text: '这是一段简体中文转写' }), { status: 200 })
+      return new Response(
+        JSON.stringify({ text: '這是一個關於React的狀態管理與性能優化的問題，請說明為什麼需要虛擬DOM' }),
+        { status: 200 }
+      )
     })
 
     const result = await transcribeAudioChunk({
@@ -236,7 +239,7 @@ describe('streamVisionAnswer', () => {
       wavBase64: Buffer.from('mock-audio').toString('base64')
     }, new AbortController().signal)
 
-    expect(result).toBe('这是一段简体中文转写')
+    expect(result).toBe('这是一个关于React的状态管理与性能优化的问题，请说明为什么需要虚拟DOM')
     expect(capturedBody?.get('language')).toBe('zh')
     expect(capturedBody?.get('prompt')).toContain('简体中文')
     expect(capturedBody?.get('model')).toBe('whisper-1')

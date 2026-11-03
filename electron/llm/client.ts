@@ -1,3 +1,4 @@
+import { toSimplifiedChinese } from '../../shared/chinese-converter'
 import { normalizeApiUrl, normalizeTranscriptionsUrl } from '../../shared/validation'
 import {
   buildResponsesConversationInput,
@@ -112,6 +113,7 @@ export async function transcribeAudioChunk(
     }
 
     if (!text) return ''
+    text = toSimplifiedChinese(text)
     if (WHISPER_HALLUCINATION_PATTERNS.some((pattern) => pattern.test(text))) {
       return ''
     }

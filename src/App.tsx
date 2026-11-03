@@ -91,8 +91,22 @@ export function App() {
 
   const answer = useCallback(async () => {
     try {
-      if (audioListenerRef.current) {
-        await audioListenerRef.current.flushNow()
+      const shouldStopAudio = settingsRef.current?.audioAutoStopOnSend !== false
+      const listener = audioListenerRef.current
+      if (listener) {
+        await listener.flushNow(shouldStopAudio, () => {
+          if (audioListenerRef.current === listener) {
+            audioListenerRef.current = null
+          }
+          setAudioState((prev) => ({ ...prev, listening: false, speaking: false }))
+          void window.practice.audio?.toggle(false)
+        })
+      } else if (shouldStopAudio && audioStateRef.current.listening) {
+        setAudioState((prev) => ({ ...prev, listening: false, speaking: false }))
+        if (window.practice.audio?.toggle) {
+          const stoppedAudio = await window.practice.audio.toggle(false)
+          setAudioState(stoppedAudio)
+        }
       }
       const latestAudio = await window.practice.audio?.getState()
       const transcriptPart = (latestAudio?.transcript ?? audioStateRef.current.transcript).trim()
@@ -109,9 +123,9 @@ export function App() {
         dispatch({ requestId, turnId, type: 'turn-start', userText: combinedText })
       }
       setMessage('')
-      if (settingsRef.current?.audioAutoStopOnSend !== false && window.practice.audio?.toggle) {
+      if (shouldStopAudio && window.practice.audio?.toggle) {
         const nextAudio = await window.practice.audio.toggle(false)
-        setAudioState(nextAudio)
+        setAudioState({ ...nextAudio, error: undefined, listening: false, speaking: false, transcript: '' })
       } else {
         setAudioState((prev) => ({ ...prev, error: undefined, transcript: '' }))
       }
@@ -337,9 +351,11 @@ export function App() {
                   ? '正在转写系统语音…'
                   : audioState.speaking
                     ? '正在收音（检测到系统声音）…'
-                    : '系统音频后台听写中'}
+                    : audioState.listening
+                      ? '系统音频后台听写中'
+                      : '语音听写已结束（待发送）'}
               </strong>
-              <small>右键双击立即发送 · 中键双击清空</small>
+              <small>{settings?.hotkeys.answer ?? '右键双击'}立即发送 · {settings?.hotkeys.clear ?? '中键双击'}清空</small>
             </div>
             <div className="live-transcript-content">
               {audioState.transcript ? (

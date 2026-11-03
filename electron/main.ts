@@ -91,6 +91,7 @@ async function bootstrap(): Promise<void> {
   let audioListening = false
   let audioSpeaking = false
   let audioTranscribingCount = 0
+  let audioGeneration = 0
   let liveTranscript = ''
   let audioError: string | undefined
   let audioAbortController = new AbortController()
@@ -246,6 +247,7 @@ async function bootstrap(): Promise<void> {
   const clearConversation = () => {
     coordinator.clearConversation()
     captureCount = 0
+    audioGeneration += 1
     liveTranscript = ''
     audioError = undefined
     remoteServer.broadcast('clear', {})
@@ -384,6 +386,7 @@ async function bootstrap(): Promise<void> {
     }
   })
   ipcMain.handle(IPC.AUDIO_CLEAR, () => {
+    audioGeneration += 1
     liveTranscript = ''
     audioError = undefined
     return publishAudioState()
@@ -398,6 +401,7 @@ async function bootstrap(): Promise<void> {
       audioError = '请先在设置中保存 STT API Key'
       return publishAudioState()
     }
+    const generationAtStart = audioGeneration
     audioTranscribingCount += 1
     publishAudioState()
     try {
@@ -410,7 +414,7 @@ async function bootstrap(): Promise<void> {
         },
         audioAbortController.signal
       )
-      if (text) {
+      if (text && generationAtStart === audioGeneration) {
         liveTranscript = liveTranscript ? `${liveTranscript} ${text}` : text
         if (liveTranscript.length > 6000) {
           liveTranscript = liveTranscript.slice(-6000)
@@ -418,7 +422,7 @@ async function bootstrap(): Promise<void> {
         audioError = undefined
       }
     } catch (error) {
-      if (!audioAbortController.signal.aborted) {
+      if (!audioAbortController.signal.aborted && generationAtStart === audioGeneration) {
         audioError = error instanceof Error ? error.message : '语音识别失败'
       }
     } finally {
@@ -560,6 +564,7 @@ async function bootstrap(): Promise<void> {
     if (current.audioAutoStopOnSend !== false && audioListening) {
       audioListening = false
       audioSpeaking = false
+      publishAudioState()
     }
     const apiKey = settings.getApiKey()
     if (!apiKey) throw new Error('请先在设置中保存 API Key')
@@ -574,6 +579,7 @@ async function bootstrap(): Promise<void> {
       selectedKnowledgeBaseIds: current.selectedKnowledgeBaseIds
     })
     captureCount = 0
+    audioGeneration += 1
     liveTranscript = ''
     audioError = undefined
     publishAudioState()
